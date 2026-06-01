@@ -163,6 +163,21 @@ export const customerSchema = z.object({
   metadata: z.record(z.string()).optional()
 });
 
+export const customersSchema = z.array(customerSchema);
+
+export const subscriptionAssignmentSchema = z.object({
+  customerId: z.string(),
+  planId: z.string(),
+  seats: z.number().int().nonnegative(),
+  startsOn: z.string(),
+  endsOn: z.string().optional()
+});
+
+export const customerBillingProfileSchema = z.object({
+  customer: customerSchema,
+  activeSubscription: subscriptionAssignmentSchema.optional()
+});
+
 export const usageEventSchema = z.object({
   idempotencyKey: z.string(),
   customerId: z.string(),
@@ -191,3 +206,5 @@ export type BillingContext = z.infer<typeof billingContextSchema>;
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type Plan = z.infer<typeof planSchema>;
 export type ScenarioComparison = z.infer<typeof scenarioComparisonSchema>;
+export type Customer = z.infer<typeof customerSchema>;
+export type CustomerBillingProfile = z.infer<typeof customerBillingProfileSchema>;

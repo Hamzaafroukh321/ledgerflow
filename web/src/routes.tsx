@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { AuditPage } from "./pages/AuditPage";
+import { CustomersPage } from "./pages/CustomersPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PlansPage } from "./pages/PlansPage";
 import { ScenarioPage } from "./pages/ScenarioPage";
@@ -31,6 +32,10 @@ export const routes: RouteObject[] = [
       {
         path: "scenarios",
         element: <ScenarioPage />
+      },
+      {
+        path: "customers",
+        element: <CustomersPage />
       }
     ]
   }

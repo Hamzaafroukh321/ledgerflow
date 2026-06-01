@@ -4,10 +4,14 @@ import {
   apiErrorEnvelopeSchema,
   auditReportSchema,
   billingContextSchema,
+  customerBillingProfileSchema,
+  customerSchema,
+  customersSchema,
   invoiceSchema,
   plansSchema,
   refundResultSchema,
   scenarioComparisonSchema,
+  subscriptionAssignmentSchema,
   usageEventSchema,
   type BillingContext,
   type Invoice
@@ -66,6 +70,16 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request("/invoices/audit", auditReportSchema, body("POST", invoiceSchema.parse(invoice))),
     compareScenarios: (input: unknown) =>
       request("/scenarios/compare", scenarioComparisonSchema, body("POST", input)),
+    listCustomers: () => request("/customers", customersSchema),
+    createCustomer: (input: unknown) =>
+      request("/customers", customerSchema, body("POST", customerSchema.parse(input))),
+    assignSubscription: (input: unknown) =>
+      request("/subscriptions", subscriptionAssignmentSchema, body("POST", subscriptionAssignmentSchema.parse(input))),
+    getBillingProfile: (customerId: string, onDate: string) =>
+      request(
+        `/customers/${encodeURIComponent(customerId)}/billing-profile?onDate=${encodeURIComponent(onDate)}`,
+        customerBillingProfileSchema
+      ),
     ingestUsage: (event: unknown) =>
       request("/usage/events", z.object({ accepted: z.boolean(), reason: z.string().optional() }), body("POST", usageEventSchema.parse(event))),
     simulateRefund: (input: unknown) =>
