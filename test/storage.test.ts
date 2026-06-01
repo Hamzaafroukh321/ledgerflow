@@ -45,6 +45,15 @@ describe("storage", () => {
         timestamp: "2025-01-01T00:00:00Z"
       })
     ).toEqual({ accepted: false, reason: "duplicate_idempotency_key" });
+    expect(
+      usage.ingest({
+        idempotencyKey: "evt_1",
+        customerId: "cus_1",
+        meter: "api",
+        quantity: 2,
+        timestamp: "2025-01-01T00:00:00Z"
+      })
+    ).toMatchObject({ accepted: false, reason: "idempotency_conflict" });
   });
 
   it("sqlite repositories satisfy the same contract", () => {
@@ -72,6 +81,15 @@ describe("storage", () => {
         timestamp: "2025-01-01T00:00:00Z"
       })
     ).toEqual({ accepted: false, reason: "duplicate_idempotency_key" });
+    expect(
+      store.ingest({
+        idempotencyKey: "evt_1",
+        customerId: "cus_1",
+        meter: "api",
+        quantity: 2,
+        timestamp: "2025-01-01T00:00:00Z"
+      })
+    ).toMatchObject({ accepted: false, reason: "idempotency_conflict" });
     store.close();
   });
 });

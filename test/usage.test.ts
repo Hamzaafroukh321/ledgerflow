@@ -15,11 +15,22 @@ describe("usage", () => {
     const store = new InMemoryUsageStore();
 
     expect(store.ingest(event)).toEqual({ accepted: true });
-    expect(store.ingest({ ...event, quantity: 20 })).toEqual({
+    expect(store.ingest({ ...event })).toEqual({
       accepted: false,
       reason: "duplicate_idempotency_key"
     });
     expect(store.list()).toHaveLength(1);
+  });
+
+  it("reports a conflict when a repeated idempotency key has different content", () => {
+    const store = new InMemoryUsageStore();
+
+    expect(store.ingest(event)).toEqual({ accepted: true });
+    expect(store.ingest({ ...event, quantity: 20 })).toEqual({
+      accepted: false,
+      reason: "idempotency_conflict",
+      existingEvent: event
+    });
   });
 
   it("aggregates usage within the period only", () => {

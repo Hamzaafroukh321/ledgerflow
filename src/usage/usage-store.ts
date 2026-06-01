@@ -10,8 +10,11 @@ export class InMemoryUsageStore implements UsageStore {
 
   public ingest(event: UsageEvent): UsageIngestResult {
     validateUsageEvent(event);
-    if (this.events.has(event.idempotencyKey)) {
-      return { accepted: false, reason: "duplicate_idempotency_key" };
+    const existing = this.events.get(event.idempotencyKey);
+    if (existing) {
+      return sameUsageEvent(existing, event)
+        ? { accepted: false, reason: "duplicate_idempotency_key" }
+        : { accepted: false, reason: "idempotency_conflict", existingEvent: { ...existing } };
     }
 
     this.events.set(event.idempotencyKey, { ...event });
@@ -21,6 +24,16 @@ export class InMemoryUsageStore implements UsageStore {
   public list(): UsageEvent[] {
     return [...this.events.values()].map((event) => ({ ...event }));
   }
+}
+
+export function sameUsageEvent(left: UsageEvent, right: UsageEvent): boolean {
+  return (
+    left.idempotencyKey === right.idempotencyKey &&
+    left.customerId === right.customerId &&
+    left.meter === right.meter &&
+    left.quantity === right.quantity &&
+    left.timestamp === right.timestamp
+  );
 }
 
 export function validateUsageEvent(event: UsageEvent): void {

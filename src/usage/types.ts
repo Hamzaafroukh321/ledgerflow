@@ -14,4 +14,5 @@ export interface UsagePeriod {
 export interface UsageIngestResult {
   accepted: boolean;
   reason?: string;
+  existingEvent?: UsageEvent;
 }

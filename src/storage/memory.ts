@@ -1,6 +1,6 @@
 import type { Coupon } from "../discounts/types.js";
 import type { Plan } from "../plans/types.js";
-import { validateUsageEvent } from "../usage/usage-store.js";
+import { sameUsageEvent, validateUsageEvent } from "../usage/usage-store.js";
 import type { UsageEvent, UsageIngestResult } from "../usage/types.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "./repository.js";
 
@@ -26,8 +26,11 @@ export class MemoryUsageRepository implements UsageRepository {
 
   public ingest(event: UsageEvent): UsageIngestResult {
     validateUsageEvent(event);
-    if (this.events.has(event.idempotencyKey)) {
-      return { accepted: false, reason: "duplicate_idempotency_key" };
+    const existing = this.events.get(event.idempotencyKey);
+    if (existing) {
+      return sameUsageEvent(existing, event)
+        ? { accepted: false, reason: "duplicate_idempotency_key" }
+        : { accepted: false, reason: "idempotency_conflict", existingEvent: { ...existing } };
     }
     this.events.set(event.idempotencyKey, { ...event });
     return { accepted: true };

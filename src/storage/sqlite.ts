@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 
 import type { Coupon } from "../discounts/types.js";
 import type { Plan } from "../plans/types.js";
-import { validateUsageEvent } from "../usage/usage-store.js";
+import { sameUsageEvent, validateUsageEvent } from "../usage/usage-store.js";
 import type { UsageEvent, UsageIngestResult } from "../usage/types.js";
 
 export class SqliteStore {
@@ -44,6 +44,12 @@ export class SqliteStore {
 
   public ingest(event: UsageEvent): UsageIngestResult {
     validateUsageEvent(event);
+    const existing = this.getUsageEvent(event.idempotencyKey);
+    if (existing) {
+      return sameUsageEvent(existing, event)
+        ? { accepted: false, reason: "duplicate_idempotency_key" }
+        : { accepted: false, reason: "idempotency_conflict", existingEvent: existing };
+    }
     const result = this.db
       .prepare(
         "INSERT OR IGNORE INTO usage_events (idempotency_key, customer_id, meter, quantity, ts) VALUES (?, ?, ?, ?, ?)"
@@ -65,6 +71,24 @@ export class SqliteStore {
       quantity: row.quantity,
       timestamp: row.ts
     }));
+  }
+
+  private getUsageEvent(idempotencyKey: string): UsageEvent | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT idempotency_key, customer_id, meter, quantity, ts FROM usage_events WHERE idempotency_key = ?"
+      )
+      .get(idempotencyKey) as UsageRow | undefined;
+    if (!row) {
+      return undefined;
+    }
+    return {
+      idempotencyKey: row.idempotency_key,
+      customerId: row.customer_id,
+      meter: row.meter,
+      quantity: row.quantity,
+      timestamp: row.ts
+    };
   }
 
   private getPlan(planId: string): Plan | undefined {

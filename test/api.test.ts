@@ -79,6 +79,13 @@ describe("api", () => {
     expect(
       (await server.inject({ method: "POST", url: "/usage/events", payload: usagePayload })).statusCode
     ).toBe(409);
+    const conflictingUsage = await server.inject({
+      method: "POST",
+      url: "/usage/events",
+      payload: { ...usagePayload, quantity: 2 }
+    });
+    expect(conflictingUsage.statusCode).toBe(409);
+    expect(conflictingUsage.json().reason).toBe("idempotency_conflict");
     await server.close();
   });
 
