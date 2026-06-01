@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildServer,
   createDefaultServerDeps,
+  AppError,
   MemoryCouponRepository,
   MemoryPlanRepository,
   MemoryUsageRepository,
@@ -170,6 +171,20 @@ describe("api", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json().error.code).toBe("validation_error");
+    await server.close();
+  });
+
+  it("maps typed application errors to the stable envelope", async () => {
+    const server = buildServer();
+    server.get("/forced-error", async () => {
+      throw new AppError("forced_error", "Forced failure", 418, { reason: "test" });
+    });
+
+    const response = await server.inject({ method: "GET", url: "/forced-error" });
+    expect(response.statusCode).toBe(418);
+    expect(response.json()).toEqual({
+      error: { code: "forced_error", message: "Forced failure", details: { reason: "test" } }
+    });
     await server.close();
   });
 

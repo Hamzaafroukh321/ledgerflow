@@ -72,3 +72,13 @@ export type {
   ScenarioInput,
   ScenarioResult
 } from "./scenarios/types.js";
+export {
+  AppError,
+  ConflictError,
+  CurrencyError,
+  IdempotencyError,
+  NotFoundError,
+  PricingRuleError,
+  TaxError,
+  ValidationError
+} from "./errors/index.js";

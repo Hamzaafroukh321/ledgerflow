@@ -7,6 +7,7 @@ import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
 import { MemoryCustomerRepository } from "../customers/repository.js";
 import type { CustomerRepository } from "../customers/repository.js";
 import { defaultInvoiceEngine, type InvoiceEngine } from "../engine/InvoiceEngine.js";
+import { registerErrorHandler } from "../errors/handler.js";
 import { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "../storage/memory.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
 import {
@@ -38,6 +39,7 @@ export function buildServer(deps: ServerDeps = {}): FastifyInstance {
     }
   });
   void server.register(swaggerUi, { routePrefix: "/docs" });
+  registerErrorHandler(server);
   registerRoutes(server, {
     engine: deps.engine ?? defaults.engine,
     plans: deps.plans ?? defaults.plans,
