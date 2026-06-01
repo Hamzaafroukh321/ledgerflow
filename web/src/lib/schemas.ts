@@ -1,0 +1,192 @@
+import { z } from "zod";
+
+export const apiErrorEnvelopeSchema = z.object({
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    details: z.unknown().optional()
+  })
+});
+
+export const moneySchema = z.object({
+  amountMinor: z.number().int(),
+  currency: z.string().regex(/^[A-Z]{3}$/)
+});
+
+export const traceNodeSchema: z.ZodType<TraceNode> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    rule: z.string(),
+    total: z.number().int(),
+    inputs: z.record(z.unknown()).optional(),
+    children: z.array(traceNodeSchema).optional()
+  })
+);
+
+export interface TraceNode {
+  id: string;
+  rule: string;
+  total: number;
+  inputs?: Record<string, unknown>;
+  children?: TraceNode[];
+}
+
+export const lineItemSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  amountMinor: z.number().int(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  traceId: z.string()
+});
+
+export const invoiceSchema = z.object({
+  id: z.string().optional(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  lineItems: z.array(lineItemSchema),
+  discounts: z.array(z.object({ code: z.string(), amountMinor: z.number().int() })),
+  creditsApplied: z.array(
+    z.object({
+      id: z.string(),
+      amountMinor: z.number().int(),
+      phase: z.enum(["pre_tax", "post_tax"])
+    })
+  ),
+  taxLines: z.array(
+    z.object({
+      jurisdiction: z.string(),
+      rate: z.number(),
+      amountMinor: z.number().int(),
+      inclusive: z.boolean()
+    })
+  ),
+  totals: z.object({
+    subtotal: z.number().int(),
+    discountTotal: z.number().int(),
+    creditTotal: z.number().int(),
+    tax: z.number().int(),
+    total: z.number().int()
+  }),
+  explanation: traceNodeSchema
+});
+
+export const billingContextSchema = z.object({
+  invoiceId: z.string().optional(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  period: z.object({ start: z.string(), end: z.string() }),
+  customer: z.object({
+    id: z.string(),
+    taxProfile: z.object({
+      exempt: z.boolean(),
+      jurisdiction: z.string(),
+      reverseCharge: z.boolean().optional(),
+      inclusive: z.boolean().optional(),
+      rates: z.record(z.number()).optional()
+    })
+  }),
+  subscription: z.object({
+    planId: z.string(),
+    seats: z.number().int().nonnegative(),
+    changedOn: z.string().nullable().optional()
+  }),
+  usage: z.array(z.object({ meter: z.string(), quantity: z.number().nonnegative() })),
+  coupons: z.array(z.string()),
+  credits: z.array(
+    z.object({
+      id: z.string(),
+      amountMinor: z.number().int().nonnegative(),
+      phase: z.enum(["pre_tax", "post_tax"])
+    })
+  )
+});
+
+export const planSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  currency: z.string(),
+  components: z.array(z.record(z.unknown()))
+});
+
+export const plansSchema = z.array(planSchema);
+
+export const auditReportSchema = z.object({
+  invoiceId: z.string().optional(),
+  checkedAt: z.string(),
+  summary: z.object({
+    valid: z.boolean(),
+    errors: z.number().int(),
+    warnings: z.number().int()
+  }),
+  issues: z.array(
+    z.object({
+      code: z.string(),
+      severity: z.enum(["error", "warning"]),
+      message: z.string(),
+      path: z.array(z.string()).optional(),
+      expected: z.unknown().optional(),
+      actual: z.unknown().optional()
+    })
+  )
+});
+
+export const scenarioComparisonSchema = z.object({
+  baseline: z.object({
+    name: z.string(),
+    invoice: invoiceSchema,
+    audit: auditReportSchema
+  }),
+  candidates: z.array(
+    z.object({
+      name: z.string(),
+      invoice: invoiceSchema,
+      audit: auditReportSchema
+    })
+  ),
+  deltas: z.array(
+    z.object({
+      candidate: z.string(),
+      totalDelta: z.number().int(),
+      subtotalDelta: z.number().int(),
+      taxDelta: z.number().int(),
+      discountDelta: z.number().int(),
+      creditDelta: z.number().int(),
+      validityChanged: z.boolean()
+    })
+  )
+});
+
+export const customerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().optional(),
+  taxProfile: billingContextSchema.shape.customer.shape.taxProfile,
+  metadata: z.record(z.string()).optional()
+});
+
+export const usageEventSchema = z.object({
+  idempotencyKey: z.string(),
+  customerId: z.string(),
+  meter: z.string(),
+  quantity: z.number().int().nonnegative(),
+  timestamp: z.string()
+});
+
+export const refundResultSchema = z.object({
+  allocations: z.array(
+    z.object({
+      lineItemId: z.string(),
+      amountMinor: z.number().int()
+    })
+  ),
+  creditNote: z.object({
+    amountMinor: z.number().int(),
+    currency: z.string(),
+    reason: z.string()
+  }),
+  trace: traceNodeSchema
+});
+
+export type ApiErrorEnvelope = z.infer<typeof apiErrorEnvelopeSchema>;
+export type BillingContext = z.infer<typeof billingContextSchema>;
+export type Invoice = z.infer<typeof invoiceSchema>;
+export type Plan = z.infer<typeof planSchema>;
