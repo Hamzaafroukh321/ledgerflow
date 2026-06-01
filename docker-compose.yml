@@ -4,7 +4,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      LEDGERFLOW_DB: /data/ledgerflow.sqlite
+      LEDGERFLOW_DB: ${LEDGERFLOW_DB:-/data/ledgerflow.sqlite}
     volumes:
       - ledgerflow-data:/data
 

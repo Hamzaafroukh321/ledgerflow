@@ -8,11 +8,15 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+ENV LEDGERFLOW_DB=/data/ledgerflow.sqlite
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 COPY examples ./examples
-RUN addgroup -S ledgerflow && adduser -S ledgerflow -G ledgerflow
+RUN addgroup -S -g 10001 ledgerflow \
+  && adduser -S -D -H -u 10001 -G ledgerflow ledgerflow \
+  && mkdir -p /data \
+  && chown -R ledgerflow:ledgerflow /data
 USER ledgerflow
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
