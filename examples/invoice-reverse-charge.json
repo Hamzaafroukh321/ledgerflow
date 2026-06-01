@@ -1,0 +1,12 @@
+{
+  "currency": "USD",
+  "period": { "start": "2025-01-01", "end": "2025-02-01" },
+  "customer": {
+    "id": "cus_reverse",
+    "taxProfile": { "exempt": false, "jurisdiction": "DE", "reverseCharge": true }
+  },
+  "subscription": { "planId": "pro_monthly", "seats": 2, "changedOn": null },
+  "usage": [{ "meter": "api_calls", "quantity": 15000 }],
+  "coupons": [],
+  "credits": []
+}

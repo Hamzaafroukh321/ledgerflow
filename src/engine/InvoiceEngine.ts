@@ -92,9 +92,10 @@ export class InvoiceEngine {
       normalizeTaxProfile(context.customer.taxProfile)
     ).taxLines;
     const tax = taxLines.reduce((sum, line) => sum + line.amountMinor, 0);
-    const postTax = applyCredits(taxableSubtotal + tax, preTax.remainingCredits, "post_tax");
+    const chargeableTax = taxLines.reduce((sum, line) => sum + (line.inclusive ? 0 : line.amountMinor), 0);
+    const postTax = applyCredits(taxableSubtotal + chargeableTax, preTax.remainingCredits, "post_tax");
     const creditTotal = sumApplied(preTax.applied) + sumApplied(postTax.applied);
-    const total = Math.max(0, subtotal + discountTotal + creditTotal + tax);
+    const total = Math.max(0, subtotal + discountTotal + creditTotal + chargeableTax);
 
     const explanation = traceNode({
       id: "root",

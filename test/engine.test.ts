@@ -52,7 +52,10 @@ describe("InvoiceEngine", () => {
       "invoice-usage.json",
       "invoice-proration.json",
       "invoice-coupon-stack.json",
-      "invoice-tax-exempt.json"
+      "invoice-tax-exempt.json",
+      "invoice-inclusive-tax.json",
+      "invoice-reverse-charge.json",
+      "invoice-over-credit.json"
     ];
 
     const totals = examples.map((file) => {
@@ -83,6 +86,18 @@ describe("InvoiceEngine", () => {
         [
           "invoice-tax-exempt.json",
           3998,
+        ],
+        [
+          "invoice-inclusive-tax.json",
+          2900,
+        ],
+        [
+          "invoice-reverse-charge.json",
+          8998,
+        ],
+        [
+          "invoice-over-credit.json",
+          0,
         ],
       ]
     `);

@@ -1,0 +1,12 @@
+{
+  "currency": "USD",
+  "period": { "start": "2025-01-01", "end": "2025-02-01" },
+  "customer": {
+    "id": "cus_inclusive",
+    "taxProfile": { "exempt": false, "jurisdiction": "GB", "inclusive": true, "rates": { "GB": 0.2 } }
+  },
+  "subscription": { "planId": "starter_monthly", "seats": 1, "changedOn": null },
+  "usage": [],
+  "coupons": [],
+  "credits": []
+}
