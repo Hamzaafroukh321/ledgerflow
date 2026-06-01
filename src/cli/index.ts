@@ -52,7 +52,7 @@ program
     if (options.strategy !== "proportional" && options.strategy !== "sequential") {
       throw new Error(`Unsupported refund strategy: ${options.strategy}`);
     }
-    const invoice = readJson(options.invoice) as Invoice;
+    const invoice = readInvoiceInput(readJson(options.invoice));
     writeJson(allocateRefund(invoice, Number.parseInt(options.amount, 10), options.strategy), true);
   });
 
@@ -72,6 +72,24 @@ program.parseAsync().catch((error: unknown) => {
 
 function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf8")) as unknown;
+}
+
+function readInvoiceInput(input: unknown): Invoice {
+  if (isInvoice(input)) {
+    return input;
+  }
+  if (isRecord(input) && isInvoice(input.invoice)) {
+    return input.invoice;
+  }
+  throw new Error("Refund input must be an invoice or an object with an invoice property");
+}
+
+function isInvoice(input: unknown): input is Invoice {
+  return isRecord(input) && Array.isArray(input.lineItems) && isRecord(input.totals);
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === "object" && input !== null;
 }
 
 function writeJson(value: unknown, pretty = false): void {
