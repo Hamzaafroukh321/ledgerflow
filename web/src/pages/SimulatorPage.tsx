@@ -5,10 +5,14 @@ import { useForm } from "react-hook-form";
 import { FieldRow } from "../components/forms/FieldRow";
 import { MoneyInput } from "../components/forms/MoneyInput";
 import { PlanSelect } from "../components/forms/PlanSelect";
+import { InvoiceView } from "../components/InvoiceView";
+import { ApiError } from "../lib/apiClient";
 import { buildBillingContext, defaultSimulatorValues, simulatorFormSchema, type SimulatorFormValues } from "../lib/simulator";
+import { useSimulateInvoice } from "../hooks/useSimulateInvoice";
 
 export function SimulatorPage() {
   const [preview, setPreview] = useState<unknown>();
+  const simulation = useSimulateInvoice();
   const {
     register,
     handleSubmit,
@@ -22,7 +26,14 @@ export function SimulatorPage() {
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
       <div>
         <h2 className="text-2xl font-semibold">Invoice Simulator</h2>
-        <form className="mt-6 grid gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm" onSubmit={handleSubmit((values) => setPreview(buildBillingContext(values)))}>
+        <form
+          className="mt-6 grid gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm"
+          onSubmit={handleSubmit((values) => {
+            const context = buildBillingContext(values);
+            setPreview(context);
+            simulation.mutate(context);
+          })}
+        >
           <div className="grid gap-4 md:grid-cols-2">
             <FieldRow label="Currency" error={errors.currency?.message}>
               <input className="rounded-md border border-slate-300 px-3 py-2" {...register("currency")} />
@@ -56,16 +67,29 @@ export function SimulatorPage() {
             </FieldRow>
           </div>
           <button className="w-fit rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white" type="submit">
-            Validate context
+            {simulation.isPending ? "Simulating..." : "Simulate invoice"}
           </button>
         </form>
       </div>
-      <aside className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-semibold">Context preview</h3>
-        <pre className="mt-4 max-h-[34rem] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50">
-          {JSON.stringify(preview ?? buildBillingContext(defaultSimulatorValues), null, 2)}
-        </pre>
-      </aside>
+      <div className="grid gap-4">
+        {simulation.error ? (
+          <section className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-950">
+            <h3 className="font-semibold">Simulation failed</h3>
+            <p className="mt-1 text-sm">
+              {simulation.error instanceof ApiError
+                ? `${simulation.error.code}: ${simulation.error.message}`
+                : "Unexpected error"}
+            </p>
+          </section>
+        ) : null}
+        {simulation.data ? <InvoiceView invoice={simulation.data} /> : null}
+        <aside className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="font-semibold">Context preview</h3>
+          <pre className="mt-4 max-h-[34rem] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50">
+            {JSON.stringify(preview ?? buildBillingContext(defaultSimulatorValues), null, 2)}
+          </pre>
+        </aside>
+      </div>
     </section>
   );
 }
