@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { defaultInvoiceEngine, pipelineStages, reconcile, type BillingContext } from "../src/index.js";
 
@@ -42,5 +44,47 @@ describe("InvoiceEngine", () => {
       total: 9755
     });
     expect(reconcile(invoice.explanation)).toBe(true);
+  });
+
+  it("runs every invoice example deterministically", () => {
+    const examples = [
+      "invoice-basic.json",
+      "invoice-usage.json",
+      "invoice-proration.json",
+      "invoice-coupon-stack.json",
+      "invoice-tax-exempt.json"
+    ];
+
+    const totals = examples.map((file) => {
+      const payload = JSON.parse(readFileSync(join("examples", file), "utf8")) as unknown;
+      const invoice = defaultInvoiceEngine.simulate(payload);
+      expect(invoice.totals.total).toEqual(defaultInvoiceEngine.simulate(payload).totals.total);
+      return [file, invoice.totals.total];
+    });
+
+    expect(totals).toMatchInlineSnapshot(`
+      [
+        [
+          "invoice-basic.json",
+          2900,
+        ],
+        [
+          "invoice-usage.json",
+          12865,
+        ],
+        [
+          "invoice-proration.json",
+          3095,
+        ],
+        [
+          "invoice-coupon-stack.json",
+          9755,
+        ],
+        [
+          "invoice-tax-exempt.json",
+          3998,
+        ],
+      ]
+    `);
   });
 });

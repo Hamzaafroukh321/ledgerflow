@@ -1,0 +1,9 @@
+{
+  "currency": "USD",
+  "period": { "start": "2025-01-01", "end": "2025-02-01" },
+  "customer": { "id": "cus_basic", "taxProfile": { "exempt": true, "jurisdiction": "US-CA" } },
+  "subscription": { "planId": "starter_monthly", "seats": 1, "changedOn": null },
+  "usage": [],
+  "coupons": [],
+  "credits": []
+}

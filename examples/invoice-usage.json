@@ -1,0 +1,9 @@
+{
+  "currency": "USD",
+  "period": { "start": "2025-01-01", "end": "2025-02-01" },
+  "customer": { "id": "cus_usage", "taxProfile": { "exempt": false, "jurisdiction": "US-CA" } },
+  "subscription": { "planId": "pro_monthly", "seats": 5, "changedOn": null },
+  "usage": [{ "meter": "api_calls", "quantity": 12000 }],
+  "coupons": [],
+  "credits": []
+}

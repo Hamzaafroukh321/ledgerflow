@@ -1,0 +1,17 @@
+{
+  "invoice": {
+    "id": "inv_refund",
+    "currency": "USD",
+    "lineItems": [
+      { "id": "base", "description": "Base", "amountMinor": 7000, "currency": "USD", "traceId": "base" },
+      { "id": "usage", "description": "Usage", "amountMinor": 3000, "currency": "USD", "traceId": "usage" }
+    ],
+    "discounts": [{ "code": "SAVE", "amountMinor": -1000 }],
+    "creditsApplied": [],
+    "taxLines": [],
+    "totals": { "subtotal": 10000, "discountTotal": -1000, "creditTotal": 0, "tax": 0, "total": 9000 },
+    "explanation": { "id": "root", "rule": "invoice_total", "total": 9000, "children": [] }
+  },
+  "amountMinor": 1000,
+  "strategy": "proportional"
+}
