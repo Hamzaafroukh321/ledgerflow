@@ -94,6 +94,22 @@ describe("api", () => {
     await server.close();
   });
 
+  it("exposes default plans and coupons on a fresh server", async () => {
+    const server = buildServer();
+
+    const plans = (await server.inject({ method: "GET", url: "/plans" })).json<Plan[]>();
+    expect(plans.map((plan) => plan.id).sort()).toEqual(["pro_monthly", "starter_monthly"]);
+
+    const couponResponse = await server.inject({
+      method: "POST",
+      url: "/coupons/validate",
+      payload: { code: "SAVE20", context: {} }
+    });
+    expect(couponResponse.statusCode).toBe(200);
+    expect(couponResponse.json()).toEqual({ valid: true });
+    await server.close();
+  });
+
   it("returns validation 400", async () => {
     const server = buildServer();
     const response = await server.inject({ method: "POST", url: "/usage/events", payload: {} });
@@ -146,6 +162,8 @@ describe("api", () => {
     expect(deps.plans).toBeInstanceOf(SqlitePlanRepository);
     expect(deps.usage).toBeInstanceOf(SqliteUsageRepository);
     expect(deps.coupons).toBeInstanceOf(SqliteCouponRepository);
+    expect(deps.plans.list().map((plan) => plan.id).sort()).toEqual(["pro_monthly", "starter_monthly"]);
+    expect(deps.coupons.get("SAVE20")).toMatchObject({ code: "SAVE20", value: 20 });
     if (deps.plans instanceof SqlitePlanRepository) {
       deps.plans.close();
     }

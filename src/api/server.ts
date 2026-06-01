@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
+import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
 import { defaultInvoiceEngine, type InvoiceEngine } from "../engine/InvoiceEngine.js";
 import { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "../storage/memory.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
@@ -34,18 +35,28 @@ export function createDefaultServerDeps(
 ): Required<ServerDeps> {
   const dbPath = env.LEDGERFLOW_DB;
   if (dbPath) {
+    const plans = new SqlitePlanRepository(dbPath);
+    const usage = new SqliteUsageRepository(dbPath);
+    const coupons = new SqliteCouponRepository(dbPath);
+    seedDefaultPlans(plans);
+    seedDefaultCoupons(coupons);
     return {
       engine: defaultInvoiceEngine,
-      plans: new SqlitePlanRepository(dbPath),
-      usage: new SqliteUsageRepository(dbPath),
-      coupons: new SqliteCouponRepository(dbPath)
+      plans,
+      usage,
+      coupons
     };
   }
 
+  const plans = new MemoryPlanRepository();
+  const usage = new MemoryUsageRepository();
+  const coupons = new MemoryCouponRepository();
+  seedDefaultPlans(plans);
+  seedDefaultCoupons(coupons);
   return {
     engine: defaultInvoiceEngine,
-    plans: new MemoryPlanRepository(),
-    usage: new MemoryUsageRepository(),
-    coupons: new MemoryCouponRepository()
+    plans,
+    usage,
+    coupons
   };
 }

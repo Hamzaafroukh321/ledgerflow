@@ -45,3 +45,9 @@ export { buildServer, createDefaultServerDeps } from "./api/server.js";
 export { registerRoutes } from "./api/routes.js";
 export type { ServerDeps } from "./api/server.js";
 export type { RouteDeps } from "./api/routes.js";
+export {
+  DEFAULT_COUPONS,
+  DEFAULT_PLANS,
+  seedDefaultCoupons,
+  seedDefaultPlans
+} from "./catalog/defaults.js";

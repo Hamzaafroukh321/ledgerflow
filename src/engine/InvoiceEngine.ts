@@ -1,4 +1,5 @@
 import { applyCredits } from "../credits/ledger.js";
+import { DEFAULT_COUPONS, DEFAULT_PLANS } from "../catalog/defaults.js";
 import type { Coupon } from "../discounts/types.js";
 import { applyDiscounts } from "../discounts/stacking.js";
 import { createLineItem } from "../invoice/line-item.js";
@@ -10,53 +11,6 @@ import { prorate } from "../proration/prorate.js";
 import { computeTax } from "../tax/engine.js";
 import type { TaxProfile } from "../tax/types.js";
 import { parseBillingContext, type BillingContext } from "./context.js";
-
-const DEFAULT_PLANS: Record<string, Plan> = {
-  pro_monthly: {
-    id: "pro_monthly",
-    name: "Pro monthly",
-    type: "per_seat",
-    currency: "USD",
-    components: [
-      {
-        id: "pro_seats",
-        name: "Pro plan",
-        type: "per_seat",
-        currency: "USD",
-        unitAmountMinor: 1999
-      },
-      {
-        id: "api_calls",
-        name: "API usage overage",
-        type: "usage",
-        currency: "USD",
-        unitAmountMinor: 1,
-        meter: "api_calls",
-        includedQuantity: 10000
-      }
-    ]
-  },
-  starter_monthly: {
-    id: "starter_monthly",
-    name: "Starter monthly",
-    type: "flat",
-    currency: "USD",
-    components: [
-      {
-        id: "starter_base",
-        name: "Starter plan",
-        type: "flat",
-        currency: "USD",
-        unitAmountMinor: 2900
-      }
-    ]
-  }
-};
-
-const DEFAULT_COUPONS: Record<string, Coupon> = {
-  SAVE20: { code: "SAVE20", kind: "percent", value: 20, stackable: true },
-  LESS500: { code: "LESS500", kind: "fixed", value: 500, stackable: true }
-};
 
 export class InvoiceEngine {
   public constructor(
