@@ -22,3 +22,7 @@ export { computeTax } from "./tax/engine.js";
 export type { TaxableLineItem, TaxLine, TaxProfile, TaxTrace } from "./tax/types.js";
 export { prorate } from "./proration/prorate.js";
 export type { DateInterval, ProrationTrace } from "./proration/prorate.js";
+export { createLineItem } from "./invoice/line-item.js";
+export { reconcile, traceNode } from "./invoice/trace.js";
+export type { Invoice, InvoiceTotals, LineItem } from "./invoice/types.js";
+export type { TraceNode } from "./invoice/trace.js";
