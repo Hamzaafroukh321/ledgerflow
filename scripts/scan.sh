@@ -11,4 +11,9 @@ if git grep -n -E 'TODO|FIXME|api[_-]?key|password|secret|evaluation program|ben
   exit 1
 fi
 
+if git grep -n -E 'TODO|FIXME' -- docs README.md scripts src test examples ':!scripts/scan.sh'; then
+  echo "scan failed: unfinished marker found"
+  exit 1
+fi
+
 echo "scan passed"
