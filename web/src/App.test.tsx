@@ -8,6 +8,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: /billing operations console/i })).toBeInTheDocument();
-    expect(screen.getByText(/frontend shell ready/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /simulator/i })).toBeInTheDocument();
+    expect(screen.getByText(/explain every invoice/i)).toBeInTheDocument();
   });
 });
