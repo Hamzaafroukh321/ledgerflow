@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { Command } from "commander";
 
 import { buildServer } from "../api/server.js";
+import { DEFAULT_PLANS } from "../catalog/defaults.js";
 import { validateCoupon } from "../discounts/coupon.js";
 import { defaultInvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
@@ -12,6 +13,13 @@ import { allocateRefund } from "../refunds/allocate-refund.js";
 const program = new Command();
 
 program.name("ledgerflow").description("Deterministic billing simulation toolkit").version("0.1.0");
+
+program
+  .command("plans")
+  .option("--pretty")
+  .action((options: { pretty?: boolean }) => {
+    writeJson(Object.values(DEFAULT_PLANS), options.pretty);
+  });
 
 program
   .command("simulate")

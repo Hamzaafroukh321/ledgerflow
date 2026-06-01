@@ -22,6 +22,7 @@ npm run build
 
 ```sh
 npm run build
+node dist/cli/index.js plans --pretty
 node dist/cli/index.js simulate --input examples/invoice-basic.json --pretty --trace
 node dist/cli/index.js validate-coupon --code SAVE20 --input examples/invoice-coupon-stack.json
 node dist/cli/index.js refund --invoice examples/refund-partial.json --amount 1000 --strategy proportional
