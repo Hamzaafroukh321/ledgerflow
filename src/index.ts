@@ -41,7 +41,7 @@ export {
   SqliteUsageRepository
 } from "./storage/sqlite.js";
 export type { CouponRepository, PlanRepository, UsageRepository } from "./storage/repository.js";
-export { buildServer } from "./api/server.js";
+export { buildServer, createDefaultServerDeps } from "./api/server.js";
 export { registerRoutes } from "./api/routes.js";
 export type { ServerDeps } from "./api/server.js";
 export type { RouteDeps } from "./api/routes.js";

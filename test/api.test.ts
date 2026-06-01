@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildServer,
+  createDefaultServerDeps,
   MemoryCouponRepository,
   MemoryPlanRepository,
+  MemoryUsageRepository,
+  SqliteCouponRepository,
+  SqlitePlanRepository,
+  SqliteUsageRepository,
   type BillingContext,
   type Invoice,
   type Plan
@@ -120,5 +125,30 @@ describe("api", () => {
     expect(invalidRefund.statusCode).toBe(400);
     expect(invalidRefund.json().error.code).toBe("validation_error");
     await server.close();
+  });
+
+  it("uses sqlite repositories when LEDGERFLOW_DB is configured", () => {
+    const deps = createDefaultServerDeps({ LEDGERFLOW_DB: ":memory:" });
+
+    expect(deps.plans).toBeInstanceOf(SqlitePlanRepository);
+    expect(deps.usage).toBeInstanceOf(SqliteUsageRepository);
+    expect(deps.coupons).toBeInstanceOf(SqliteCouponRepository);
+    if (deps.plans instanceof SqlitePlanRepository) {
+      deps.plans.close();
+    }
+    if (deps.usage instanceof SqliteUsageRepository) {
+      deps.usage.close();
+    }
+    if (deps.coupons instanceof SqliteCouponRepository) {
+      deps.coupons.close();
+    }
+  });
+
+  it("uses memory repositories by default", () => {
+    const deps = createDefaultServerDeps({});
+
+    expect(deps.plans).toBeInstanceOf(MemoryPlanRepository);
+    expect(deps.usage).toBeInstanceOf(MemoryUsageRepository);
+    expect(deps.coupons).toBeInstanceOf(MemoryCouponRepository);
   });
 });
