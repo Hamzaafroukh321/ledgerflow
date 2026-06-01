@@ -3,6 +3,7 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PlansPage } from "./pages/PlansPage";
+import { SimulatorPage } from "./pages/SimulatorPage";
 
 export const routes: RouteObject[] = [
   {
@@ -16,6 +17,10 @@ export const routes: RouteObject[] = [
       {
         path: "plans",
         element: <PlansPage />
+      },
+      {
+        path: "simulator",
+        element: <SimulatorPage />
       }
     ]
   }
