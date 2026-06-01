@@ -190,3 +190,4 @@ export type ApiErrorEnvelope = z.infer<typeof apiErrorEnvelopeSchema>;
 export type BillingContext = z.infer<typeof billingContextSchema>;
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type Plan = z.infer<typeof planSchema>;
+export type ScenarioComparison = z.infer<typeof scenarioComparisonSchema>;
