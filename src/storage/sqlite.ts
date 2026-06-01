@@ -4,6 +4,7 @@ import type { Coupon } from "../discounts/types.js";
 import type { Plan } from "../plans/types.js";
 import { sameUsageEvent, validateUsageEvent } from "../usage/usage-store.js";
 import type { UsageEvent, UsageIngestResult } from "../usage/types.js";
+import type { CouponRepository, PlanRepository, UsageRepository } from "./repository.js";
 
 export class SqliteStore {
   private readonly db: Database.Database;
@@ -18,6 +19,10 @@ export class SqliteStore {
   }
 
   public list(): Plan[] {
+    return this.listPlans();
+  }
+
+  public listPlans(): Plan[] {
     const rows = this.db
       .prepare("SELECT id, name, type, currency, components_json FROM plans ORDER BY id")
       .all() as PlanRow[];
@@ -40,6 +45,15 @@ export class SqliteStore {
     } else {
       this.saveCoupon(value);
     }
+  }
+
+  public listCoupons(): Coupon[] {
+    const rows = this.db
+      .prepare(
+        "SELECT code, kind, value, redemption_limit, applies_to, stackable, redeemed_count FROM coupons ORDER BY code"
+      )
+      .all() as CouponRow[];
+    return rows.map((row) => this.couponFromRow(row));
   }
 
   public ingest(event: UsageEvent): UsageIngestResult {
@@ -124,6 +138,10 @@ export class SqliteStore {
     if (!row) {
       return undefined;
     }
+    return this.couponFromRow(row);
+  }
+
+  private couponFromRow(row: CouponRow): Coupon {
     const coupon: Coupon = {
       code: row.code,
       kind: row.kind,
@@ -182,6 +200,76 @@ export class SqliteStore {
         ts TEXT NOT NULL
       );
     `);
+  }
+}
+
+export class SqlitePlanRepository implements PlanRepository {
+  private readonly store: SqliteStore;
+
+  public constructor(path = ":memory:") {
+    this.store = new SqliteStore(path);
+  }
+
+  public list(): Plan[] {
+    return this.store.listPlans();
+  }
+
+  public get(planId: string): Plan | undefined {
+    const value = this.store.get(planId);
+    return value && "components" in value ? value : undefined;
+  }
+
+  public save(plan: Plan): void {
+    this.store.save(plan);
+  }
+
+  public close(): void {
+    this.store.close();
+  }
+}
+
+export class SqliteCouponRepository implements CouponRepository {
+  private readonly store: SqliteStore;
+
+  public constructor(path = ":memory:") {
+    this.store = new SqliteStore(path);
+  }
+
+  public list(): Coupon[] {
+    return this.store.listCoupons();
+  }
+
+  public get(code: string): Coupon | undefined {
+    const value = this.store.get(code);
+    return value && "code" in value ? value : undefined;
+  }
+
+  public save(coupon: Coupon): void {
+    this.store.save(coupon);
+  }
+
+  public close(): void {
+    this.store.close();
+  }
+}
+
+export class SqliteUsageRepository implements UsageRepository {
+  private readonly store: SqliteStore;
+
+  public constructor(path = ":memory:") {
+    this.store = new SqliteStore(path);
+  }
+
+  public ingest(event: UsageEvent): UsageIngestResult {
+    return this.store.ingest(event);
+  }
+
+  public list(): UsageEvent[] {
+    return this.store.listUsageEvents();
+  }
+
+  public close(): void {
+    this.store.close();
   }
 }
 

@@ -4,7 +4,10 @@ import {
   MemoryCouponRepository,
   MemoryPlanRepository,
   MemoryUsageRepository,
+  SqliteCouponRepository,
+  SqlitePlanRepository,
   SqliteStore,
+  SqliteUsageRepository,
   type Plan
 } from "../src/index.js";
 
@@ -91,5 +94,47 @@ describe("storage", () => {
       })
     ).toMatchObject({ accepted: false, reason: "idempotency_conflict" });
     store.close();
+  });
+
+  it("provides typed sqlite repository adapters", () => {
+    const plans = new SqlitePlanRepository();
+    const coupons = new SqliteCouponRepository();
+    const usage = new SqliteUsageRepository();
+
+    plans.save(plan);
+    coupons.save({
+      code: "TARGET",
+      kind: "fixed",
+      value: 100,
+      appliesTo: ["base"],
+      redemptionLimit: 2,
+      stackable: true
+    });
+    const event = {
+      idempotencyKey: "evt_adapter",
+      customerId: "cus_1",
+      meter: "api",
+      quantity: 3,
+      timestamp: "2025-01-01T00:00:00Z"
+    };
+
+    expect(plans.list()).toEqual([plan]);
+    expect(coupons.list()).toEqual([
+      {
+        code: "TARGET",
+        kind: "fixed",
+        value: 100,
+        appliesTo: ["base"],
+        redemptionLimit: 2,
+        redeemedCount: 0,
+        stackable: true
+      }
+    ]);
+    expect(usage.ingest(event)).toEqual({ accepted: true });
+    expect(usage.list()).toEqual([event]);
+
+    plans.close();
+    coupons.close();
+    usage.close();
   });
 });
