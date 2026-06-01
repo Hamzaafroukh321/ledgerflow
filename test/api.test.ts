@@ -185,6 +185,48 @@ describe("api", () => {
     await server.close();
   });
 
+  it("manages customers, subscriptions, and billing profiles", async () => {
+    const server = buildServer();
+    const customerPayload = {
+      id: "cus_api",
+      name: "API Customer",
+      email: "billing@example.com",
+      taxProfile: { exempt: false, jurisdiction: "US-CA" },
+      metadata: { owner: "finance" }
+    };
+
+    const created = await server.inject({
+      method: "POST",
+      url: "/customers",
+      payload: customerPayload
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject(customerPayload);
+
+    const subscription = await server.inject({
+      method: "POST",
+      url: "/subscriptions",
+      payload: {
+        customerId: "cus_api",
+        planId: "pro_monthly",
+        seats: 5,
+        startsOn: "2025-01-01"
+      }
+    });
+    expect(subscription.statusCode).toBe(200);
+
+    const profile = await server.inject({
+      method: "GET",
+      url: "/customers/cus_api/billing-profile?onDate=2025-01-15"
+    });
+    expect(profile.statusCode).toBe(200);
+    expect(profile.json().activeSubscription).toMatchObject({ planId: "pro_monthly", seats: 5 });
+
+    const customers = (await server.inject({ method: "GET", url: "/customers" })).json<unknown[]>();
+    expect(customers).toHaveLength(1);
+    await server.close();
+  });
+
   it("validates refund invoice shape before allocation", async () => {
     const server = buildServer();
     const response = await server.inject({

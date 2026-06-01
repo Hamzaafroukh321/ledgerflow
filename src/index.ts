@@ -52,8 +52,20 @@ export {
   seedDefaultPlans
 } from "./catalog/defaults.js";
 export { auditInvoice } from "./audit/invoice-auditor.js";
+export {
+  assignSubscription,
+  createCustomer,
+  resolveBillingProfile
+} from "./customers/profile.js";
+export { MemoryCustomerRepository } from "./customers/repository.js";
 export { compareScenarios } from "./scenarios/compare.js";
 export type { AuditIssue, AuditSeverity, AuditSummary, InvoiceAuditReport } from "./audit/types.js";
+export type {
+  Customer,
+  CustomerBillingProfile,
+  SubscriptionAssignment
+} from "./customers/types.js";
+export type { CustomerRepository } from "./customers/repository.js";
 export type {
   ScenarioComparison,
   ScenarioDelta,

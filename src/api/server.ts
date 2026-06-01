@@ -1,6 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
+import { MemoryCustomerRepository } from "../customers/repository.js";
+import type { CustomerRepository } from "../customers/repository.js";
 import { defaultInvoiceEngine, type InvoiceEngine } from "../engine/InvoiceEngine.js";
 import { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "../storage/memory.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
@@ -16,6 +18,7 @@ export interface ServerDeps {
   plans?: PlanRepository;
   usage?: UsageRepository;
   coupons?: CouponRepository;
+  customers?: CustomerRepository;
 }
 
 export function buildServer(deps: ServerDeps = {}): FastifyInstance {
@@ -25,7 +28,8 @@ export function buildServer(deps: ServerDeps = {}): FastifyInstance {
     engine: deps.engine ?? defaults.engine,
     plans: deps.plans ?? defaults.plans,
     usage: deps.usage ?? defaults.usage,
-    coupons: deps.coupons ?? defaults.coupons
+    coupons: deps.coupons ?? defaults.coupons,
+    customers: deps.customers ?? defaults.customers
   });
   return server;
 }
@@ -44,7 +48,8 @@ export function createDefaultServerDeps(
       engine: defaultInvoiceEngine,
       plans,
       usage,
-      coupons
+      coupons,
+      customers: new MemoryCustomerRepository()
     };
   }
 
@@ -57,6 +62,7 @@ export function createDefaultServerDeps(
     engine: defaultInvoiceEngine,
     plans,
     usage,
-    coupons
+    coupons,
+    customers: new MemoryCustomerRepository()
   };
 }

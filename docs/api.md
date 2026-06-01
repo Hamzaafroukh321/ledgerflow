@@ -40,4 +40,20 @@ Accepts `{ "code": "SAVE20", "context": {} }` and returns coupon validity.
 
 Accepts an invoice, `amountMinor`, and refund `strategy`, then returns allocations and a credit note.
 
+## `GET /customers`
+
+Returns stored customer records.
+
+## `POST /customers`
+
+Creates or replaces a customer with tax profile metadata.
+
+## `POST /subscriptions`
+
+Creates or replaces a subscription assignment for a customer.
+
+## `GET /customers/:customerId/billing-profile?onDate=YYYY-MM-DD`
+
+Returns the customer and active subscription assignment for the requested date.
+
 Validation failures return HTTP 400 with `{ "error": { "code": "validation_error", "message": "...", "details": [] } }`.

@@ -9,13 +9,17 @@ import type { Invoice } from "../invoice/types.js";
 import { validateCoupon } from "../discounts/coupon.js";
 import { aggregateUsage } from "../usage/aggregate.js";
 import { auditInvoice } from "../audit/invoice-auditor.js";
+import { assignSubscription, createCustomer, resolveBillingProfile } from "../customers/profile.js";
+import type { CustomerRepository } from "../customers/repository.js";
 import { compareScenarios } from "../scenarios/compare.js";
+import type { TaxProfile } from "../tax/types.js";
 
 export interface RouteDeps {
   engine: InvoiceEngine;
   plans: PlanRepository;
   usage: UsageRepository;
   coupons: CouponRepository;
+  customers: CustomerRepository;
 }
 
 const invoiceSchema = z.object({
@@ -83,6 +87,32 @@ const usageAggregateSchema = z.object({
     start: z.string(),
     end: z.string()
   })
+});
+
+const customerSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  email: z.string().optional(),
+  taxProfile: z.object({
+    exempt: z.boolean(),
+    jurisdiction: z.string(),
+    reverseCharge: z.boolean().optional(),
+    inclusive: z.boolean().optional(),
+    rates: z.record(z.number()).optional()
+  }),
+  metadata: z.record(z.string()).optional()
+});
+
+const subscriptionSchema = z.object({
+  customerId: z.string().min(1),
+  planId: z.string().min(1),
+  seats: z.number().int().nonnegative(),
+  startsOn: z.string(),
+  endsOn: z.string().optional()
+});
+
+const billingProfileSchema = z.object({
+  onDate: z.string()
 });
 
 export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
@@ -161,8 +191,79 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     return validateCoupon(coupon);
   });
 
+  server.get("/customers", async () => deps.customers.listCustomers());
+
+  server.post("/customers", async (request) => {
+    const body = customerSchema.parse(request.body);
+    const customerInput: Parameters<typeof createCustomer>[0] = {
+      id: body.id,
+      name: body.name,
+      taxProfile: cleanTaxProfile(body.taxProfile)
+    };
+    if (body.email !== undefined) {
+      customerInput.email = body.email;
+    }
+    if (body.metadata !== undefined) {
+      customerInput.metadata = body.metadata;
+    }
+    const customer = createCustomer(customerInput);
+    deps.customers.saveCustomer(customer);
+    return customer;
+  });
+
+  server.post("/subscriptions", async (request) => {
+    const body = subscriptionSchema.parse(request.body);
+    const assignmentInput: Parameters<typeof assignSubscription>[0] = {
+      customerId: body.customerId,
+      planId: body.planId,
+      seats: body.seats,
+      startsOn: body.startsOn
+    };
+    if (body.endsOn !== undefined) {
+      assignmentInput.endsOn = body.endsOn;
+    }
+    const assignment = assignSubscription(assignmentInput);
+    deps.customers.saveSubscription(assignment);
+    return assignment;
+  });
+
+  server.get("/customers/:customerId/billing-profile", async (request, reply) => {
+    const params = z.object({ customerId: z.string() }).parse(request.params);
+    const query = billingProfileSchema.parse(request.query);
+    const customer = deps.customers.getCustomer(params.customerId);
+    if (!customer) {
+      return reply.status(404).send({
+        error: { code: "not_found", message: `Customer not found: ${params.customerId}` }
+      });
+    }
+    return resolveBillingProfile(customer, deps.customers.listSubscriptions(params.customerId), query.onDate);
+  });
+
   server.post("/refunds/simulate", async (request) => {
     const body = refundSchema.parse(request.body);
     return allocateRefund(body.invoice as Invoice, body.amountMinor, body.strategy);
   });
+}
+
+function cleanTaxProfile(input: {
+  exempt: boolean;
+  jurisdiction: string;
+  reverseCharge?: boolean | undefined;
+  inclusive?: boolean | undefined;
+  rates?: Record<string, number> | undefined;
+}): TaxProfile {
+  const profile: TaxProfile = {
+    exempt: input.exempt,
+    jurisdiction: input.jurisdiction
+  };
+  if (input.reverseCharge !== undefined) {
+    profile.reverseCharge = input.reverseCharge;
+  }
+  if (input.inclusive !== undefined) {
+    profile.inclusive = input.inclusive;
+  }
+  if (input.rates !== undefined) {
+    profile.rates = input.rates;
+  }
+  return profile;
 }
