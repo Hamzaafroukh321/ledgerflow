@@ -5,6 +5,7 @@ import { AuditPage } from "./pages/AuditPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PlansPage } from "./pages/PlansPage";
+import { RefundPage } from "./pages/RefundPage";
 import { ScenarioPage } from "./pages/ScenarioPage";
 import { SimulatorPage } from "./pages/SimulatorPage";
 import { UsagePage } from "./pages/UsagePage";
@@ -41,6 +42,10 @@ export const routes: RouteObject[] = [
       {
         path: "usage",
         element: <UsagePage />
+      },
+      {
+        path: "refunds",
+        element: <RefundPage />
       }
     ]
   }
