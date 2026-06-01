@@ -15,8 +15,46 @@ export interface RouteDeps {
   coupons: CouponRepository;
 }
 
+const invoiceSchema = z.object({
+  id: z.string().optional(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  lineItems: z.array(
+    z.object({
+      id: z.string(),
+      description: z.string(),
+      amountMinor: z.number().int(),
+      currency: z.string().regex(/^[A-Z]{3}$/),
+      traceId: z.string()
+    })
+  ),
+  discounts: z.array(z.object({ code: z.string(), amountMinor: z.number().int() })),
+  creditsApplied: z.array(
+    z.object({
+      id: z.string(),
+      amountMinor: z.number().int(),
+      phase: z.enum(["pre_tax", "post_tax"])
+    })
+  ),
+  taxLines: z.array(
+    z.object({
+      jurisdiction: z.string(),
+      rate: z.number(),
+      amountMinor: z.number().int(),
+      inclusive: z.boolean()
+    })
+  ),
+  totals: z.object({
+    subtotal: z.number().int(),
+    discountTotal: z.number().int(),
+    creditTotal: z.number().int(),
+    tax: z.number().int(),
+    total: z.number().int()
+  }),
+  explanation: z.unknown()
+});
+
 const refundSchema = z.object({
-  invoice: z.custom<Invoice>(),
+  invoice: invoiceSchema,
   amountMinor: z.number().int().positive(),
   strategy: z.enum(["proportional", "sequential"])
 });
@@ -79,6 +117,6 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.post("/refunds/simulate", async (request) => {
     const body = refundSchema.parse(request.body);
-    return allocateRefund(body.invoice, body.amountMinor, body.strategy);
+    return allocateRefund(body.invoice as Invoice, body.amountMinor, body.strategy);
   });
 }

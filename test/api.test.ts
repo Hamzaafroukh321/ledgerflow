@@ -127,6 +127,19 @@ describe("api", () => {
     await server.close();
   });
 
+  it("validates refund invoice shape before allocation", async () => {
+    const server = buildServer();
+    const response = await server.inject({
+      method: "POST",
+      url: "/refunds/simulate",
+      payload: { invoice: { currency: "USD" }, amountMinor: 100, strategy: "sequential" }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("validation_error");
+    await server.close();
+  });
+
   it("uses sqlite repositories when LEDGERFLOW_DB is configured", () => {
     const deps = createDefaultServerDeps({ LEDGERFLOW_DB: ":memory:" });
 
