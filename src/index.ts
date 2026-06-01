@@ -16,3 +16,5 @@ export type {
   DiscountApplication,
   DiscountTrace
 } from "./discounts/types.js";
+export { applyCredits } from "./credits/ledger.js";
+export type { AppliedCredit, Credit, CreditPhase, CreditTrace } from "./credits/types.js";
