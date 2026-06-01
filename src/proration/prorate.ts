@@ -25,11 +25,16 @@ export function prorate(
 
   const periodStart = dayNumber(period.start);
   const periodEnd = dayNumber(period.end);
-  const effectiveStart = Math.max(dayNumber(effective.start), periodStart);
-  const effectiveEnd = Math.min(dayNumber(effective.end), periodEnd);
+  const rawEffectiveStart = dayNumber(effective.start);
+  const rawEffectiveEnd = dayNumber(effective.end);
+  const effectiveStart = Math.max(rawEffectiveStart, periodStart);
+  const effectiveEnd = Math.min(rawEffectiveEnd, periodEnd);
 
   if (periodEnd <= periodStart) {
     throw new Error("Proration period end must be after start");
+  }
+  if (rawEffectiveEnd <= rawEffectiveStart) {
+    throw new Error("Proration effective interval end must be after start");
   }
 
   const totalDays = periodEnd - periodStart;

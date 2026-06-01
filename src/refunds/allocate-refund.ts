@@ -8,6 +8,9 @@ export function allocateRefund(
   refundAmountMinor: number,
   strategy: RefundStrategy
 ): { allocations: RefundAllocation[]; creditNote: CreditNote; trace: RefundTrace } {
+  if (strategy !== "proportional" && strategy !== "sequential") {
+    throw new Error(`Unsupported refund strategy: ${strategy}`);
+  }
   if (!Number.isInteger(refundAmountMinor) || refundAmountMinor <= 0) {
     throw new Error("Refund amount must be a positive integer minor-unit value");
   }

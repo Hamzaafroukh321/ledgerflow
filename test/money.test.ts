@@ -24,4 +24,8 @@ describe("Money", () => {
     expect(result.negate().amountMinor).toBe(-750);
     expect(Money.zero("USD").isZero()).toBe(true);
   });
+
+  it("rejects unsafe integer minor-unit amounts", () => {
+    expect(() => new Money(Number.MAX_SAFE_INTEGER + 1, "USD")).toThrow(/safe integer/);
+  });
 });

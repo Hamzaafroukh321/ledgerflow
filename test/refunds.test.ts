@@ -35,4 +35,15 @@ describe("refunds", () => {
     ]);
     expect(result.creditNote.amountMinor).toBe(10000);
   });
+
+  it("rejects unsupported runtime refund strategies", () => {
+    expect(() => allocateRefund(invoice, 1000, "unknown" as never)).toThrow(/Unsupported/);
+  });
+
+  it("returns an empty credit note for invoices with no refundable positive lines", () => {
+    const result = allocateRefund({ ...invoice, lineItems: [] }, 1000, "proportional");
+
+    expect(result.allocations).toEqual([]);
+    expect(result.creditNote.amountMinor).toBe(0);
+  });
 });

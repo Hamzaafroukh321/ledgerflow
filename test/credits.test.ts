@@ -17,4 +17,11 @@ describe("credits", () => {
     expect(result.applied).toEqual([{ id: "cr_1", amountMinor: -1200, phase: "post_tax" }]);
     expect(result.remainingCredits).toEqual([{ id: "cr_1", amountMinor: 3800, phase: "post_tax" }]);
   });
+
+  it("keeps credits from other phases for later application", () => {
+    const result = applyCredits(1000, [{ id: "cr_1", amountMinor: 500, phase: "post_tax" }], "pre_tax");
+
+    expect(result.applied).toEqual([]);
+    expect(result.remainingCredits).toEqual([{ id: "cr_1", amountMinor: 500, phase: "post_tax" }]);
+  });
 });

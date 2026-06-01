@@ -5,8 +5,8 @@ export class Money {
   public readonly currency: string;
 
   public constructor(amountMinor: number, currency: string) {
-    if (!Number.isInteger(amountMinor)) {
-      throw new Error("Money amount must be an integer minor-unit value");
+    if (!Number.isSafeInteger(amountMinor)) {
+      throw new Error("Money amount must be a safe integer minor-unit value");
     }
     if (!/^[A-Z]{3}$/.test(currency)) {
       throw new Error("Currency must be an ISO 4217 uppercase code");

@@ -45,4 +45,15 @@ describe("tax", () => {
     expect(result.taxLines).toEqual([]);
     expect(result.trace.rule).toBe("reverse_charge");
   });
+
+  it("returns a zero-rate tax line for unknown jurisdictions", () => {
+    const result = computeTax(lineItems, {
+      exempt: false,
+      jurisdiction: "UNKNOWN"
+    });
+
+    expect(result.taxLines).toEqual([
+      { jurisdiction: "UNKNOWN", rate: 0, amountMinor: 0, inclusive: false }
+    ]);
+  });
 });
