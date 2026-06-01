@@ -1,4 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 
 import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
 import { MemoryCustomerRepository } from "../customers/repository.js";
@@ -24,6 +27,17 @@ export interface ServerDeps {
 export function buildServer(deps: ServerDeps = {}): FastifyInstance {
   const defaults = createDefaultServerDeps();
   const server = Fastify({ logger: false });
+  void server.register(cors, { origin: true });
+  void server.register(swagger, {
+    openapi: {
+      info: {
+        title: "LedgerFlow API",
+        description: "Deterministic billing simulation and invoice operations API.",
+        version: "0.1.0"
+      }
+    }
+  });
+  void server.register(swaggerUi, { routePrefix: "/docs" });
   registerRoutes(server, {
     engine: deps.engine ?? defaults.engine,
     plans: deps.plans ?? defaults.plans,
@@ -31,6 +45,7 @@ export function buildServer(deps: ServerDeps = {}): FastifyInstance {
     coupons: deps.coupons ?? defaults.coupons,
     customers: deps.customers ?? defaults.customers
   });
+  server.get("/openapi.json", async () => server.swagger());
   return server;
 }
 

@@ -136,6 +136,18 @@ describe("api", () => {
     await server.close();
   });
 
+  it("serves OpenAPI JSON and Swagger UI", async () => {
+    const server = buildServer();
+
+    const openapi = await server.inject({ method: "GET", url: "/openapi.json" });
+    expect(openapi.statusCode).toBe(200);
+    expect(openapi.json().info.title).toBe("LedgerFlow API");
+
+    const docs = await server.inject({ method: "GET", url: "/docs" });
+    expect(docs.statusCode).toBeLessThan(400);
+    await server.close();
+  });
+
   it("exposes default plans and coupons on a fresh server", async () => {
     const server = buildServer();
 

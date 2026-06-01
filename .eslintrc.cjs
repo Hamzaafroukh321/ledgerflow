@@ -16,7 +16,14 @@ module.exports = {
     "plugin:@typescript-eslint/strict",
     "plugin:@typescript-eslint/stylistic"
   ],
-  ignorePatterns: ["dist/**", "coverage/**", "node_modules/**", "ledgerflow.zip", ".eslintrc.cjs"],
+  ignorePatterns: [
+    "dist/**",
+    "coverage/**",
+    "node_modules/**",
+    "web/**/*",
+    "ledgerflow.zip",
+    ".eslintrc.cjs"
+  ],
   rules: {
     "@typescript-eslint/consistent-type-imports": "error",
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
