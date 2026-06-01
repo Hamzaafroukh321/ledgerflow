@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -36,14 +36,10 @@ describe("CustomersPage", () => {
     renderCustomers();
 
     expect(await screen.findByText("0 records")).toBeInTheDocument();
-    await user.clear(screen.getByLabelText(/customer id/i));
-    await user.type(screen.getByLabelText(/customer id/i), "cus_globex");
-    await user.clear(screen.getByLabelText(/^name$/i));
-    await user.type(screen.getByLabelText(/^name$/i), "Globex Finance");
-    await user.clear(screen.getByLabelText(/email/i));
-    await user.type(screen.getByLabelText(/email/i), "billing@globex.example");
-    await user.clear(screen.getByLabelText(/tax jurisdiction/i));
-    await user.type(screen.getByLabelText(/tax jurisdiction/i), "GB");
+    fireEvent.change(screen.getByLabelText(/customer id/i), { target: { value: "cus_globex" } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "Globex Finance" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "billing@globex.example" } });
+    fireEvent.change(screen.getByLabelText(/tax jurisdiction/i), { target: { value: "GB" } });
     await user.click(screen.getByRole("button", { name: /create customer/i }));
 
     expect(await screen.findByRole("heading", { name: "Acme Finance" })).toBeInTheDocument();
@@ -71,12 +67,9 @@ describe("CustomersPage", () => {
     renderCustomers();
 
     expect(await screen.findByRole("heading", { name: "Acme Finance" })).toBeInTheDocument();
-    await user.clear(screen.getByLabelText(/plan id/i));
-    await user.type(screen.getByLabelText(/plan id/i), "enterprise_monthly");
-    await user.clear(screen.getByLabelText(/seats/i));
-    await user.type(screen.getByLabelText(/seats/i), "12");
-    await user.clear(screen.getByLabelText(/profile date/i));
-    await user.type(screen.getByLabelText(/profile date/i), "2026-02-01");
+    fireEvent.change(screen.getByLabelText(/plan id/i), { target: { value: "enterprise_monthly" } });
+    fireEvent.change(screen.getByLabelText(/seats/i), { target: { value: "12" } });
+    fireEvent.change(screen.getByLabelText(/profile date/i), { target: { value: "2026-02-01" } });
     await user.click(screen.getByRole("button", { name: /assign subscription/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/subscriptions$/), expect.any(Object)));
     await user.click(screen.getByRole("button", { name: /load billing profile/i }));

@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -36,14 +36,10 @@ describe("UsagePage", () => {
     renderUsage();
 
     expect(await screen.findByText("100 total units")).toBeInTheDocument();
-    await user.clear(screen.getByLabelText(/customer id/i));
-    await user.type(screen.getByLabelText(/customer id/i), "cus_beta");
-    await user.clear(screen.getByLabelText(/^meter$/i));
-    await user.type(screen.getByLabelText(/^meter$/i), "seats");
-    await user.clear(screen.getByLabelText(/quantity/i));
-    await user.type(screen.getByLabelText(/quantity/i), "250");
-    await user.clear(screen.getByLabelText(/timestamp/i));
-    await user.type(screen.getByLabelText(/timestamp/i), "2026-01-21T00:00:00.000Z");
+    fireEvent.change(screen.getByLabelText(/customer id/i), { target: { value: "cus_beta" } });
+    fireEvent.change(screen.getByLabelText(/^meter$/i), { target: { value: "seats" } });
+    fireEvent.change(screen.getByLabelText(/quantity/i), { target: { value: "250" } });
+    fireEvent.change(screen.getByLabelText(/timestamp/i), { target: { value: "2026-01-21T00:00:00.000Z" } });
     await user.click(screen.getByRole("button", { name: /ingest usage/i }));
 
     expect(await screen.findByText("350 total units")).toBeInTheDocument();
@@ -61,10 +57,8 @@ describe("UsagePage", () => {
     renderUsage();
 
     expect(await screen.findByText("api_calls")).toBeInTheDocument();
-    await user.clear(screen.getByLabelText(/period start/i));
-    await user.type(screen.getByLabelText(/period start/i), "2026-01-01");
-    await user.clear(screen.getByLabelText(/period end/i));
-    await user.type(screen.getByLabelText(/period end/i), "2026-02-01");
+    fireEvent.change(screen.getByLabelText(/period start/i), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText(/period end/i), { target: { value: "2026-02-01" } });
     await user.click(screen.getByRole("button", { name: /aggregate usage/i }));
 
     expect(await screen.findByText("seats")).toBeInTheDocument();
