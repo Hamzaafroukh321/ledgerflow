@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -147,6 +151,33 @@ describe("api", () => {
     const docs = await server.inject({ method: "GET", url: "/docs" });
     expect(docs.statusCode).toBeLessThan(400);
     await server.close();
+  });
+
+  it("does not serve the web app unless static hosting is enabled", async () => {
+    const server = buildServer();
+
+    const response = await server.inject({ method: "GET", url: "/", headers: { accept: "text/html" } });
+
+    expect(response.statusCode).toBe(404);
+    await server.close();
+  });
+
+  it("serves the web app and keeps API routes available when static hosting is enabled", async () => {
+    const webRoot = mkdtempSync(join(tmpdir(), "ledgerflow-web-"));
+    writeFileSync(join(webRoot, "index.html"), "<!doctype html><title>LedgerFlow UI</title>");
+    const server = buildServer({}, { LEDGERFLOW_SERVE_WEB: "1", LEDGERFLOW_WEB_ROOT: webRoot });
+
+    const root = await server.inject({ method: "GET", url: "/", headers: { accept: "text/html" } });
+    const clientRoute = await server.inject({ method: "GET", url: "/simulator", headers: { accept: "text/html" } });
+    const plans = await server.inject({ method: "GET", url: "/plans", headers: { accept: "application/json" } });
+
+    expect(root.statusCode).toBe(200);
+    expect(root.body).toContain("LedgerFlow UI");
+    expect(clientRoute.statusCode).toBe(200);
+    expect(plans.statusCode).toBe(200);
+    expect(plans.json<Plan[]>()).toHaveLength(2);
+    await server.close();
+    rmSync(webRoot, { recursive: true, force: true });
   });
 
   it("exposes default plans and coupons on a fresh server", async () => {

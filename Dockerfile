@@ -1,17 +1,27 @@
-FROM node:20-alpine AS build
+FROM node:20-alpine AS server-build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
+FROM node:20-alpine AS web-build
+WORKDIR /app/web
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV LEDGERFLOW_DB=/data/ledgerflow.sqlite
+ENV LEDGERFLOW_SERVE_WEB=1
+ENV LEDGERFLOW_WEB_ROOT=/app/web/dist
 COPY package*.json ./
 RUN npm ci --omit=dev
-COPY --from=build /app/dist ./dist
+COPY --from=server-build /app/dist ./dist
+COPY --from=web-build /app/web/dist ./web/dist
 COPY examples ./examples
 RUN addgroup -S -g 10001 ledgerflow \
   && adduser -S -D -H -u 10001 -G ledgerflow ledgerflow \

@@ -1,5 +1,10 @@
 node_modules/
+web/node_modules/
 dist/
+web/dist/
+web/coverage/
+web/playwright-report/
+web/test-results/
 coverage/
 *.sqlite
 *.sqlite-*

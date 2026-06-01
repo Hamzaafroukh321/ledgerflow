@@ -1,5 +1,9 @@
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 
@@ -25,9 +29,13 @@ export interface ServerDeps {
   customers?: CustomerRepository;
 }
 
-export function buildServer(deps: ServerDeps = {}): FastifyInstance {
+export function buildServer(
+  deps: ServerDeps = {},
+  env: Record<string, string | undefined> = process.env
+): FastifyInstance {
   const defaults = createDefaultServerDeps();
   const server = Fastify({ logger: false });
+  const webRoot = resolveWebRoot(env);
   void server.register(cors, { origin: true });
   void server.register(swagger, {
     openapi: {
@@ -48,7 +56,25 @@ export function buildServer(deps: ServerDeps = {}): FastifyInstance {
     customers: deps.customers ?? defaults.customers
   });
   server.get("/openapi.json", async () => server.swagger());
+  if (webRoot) {
+    void server.register(fastifyStatic, { root: webRoot, wildcard: false });
+    server.setNotFoundHandler((request, reply) => {
+      const acceptsHtml = request.headers.accept?.includes("text/html") ?? false;
+      if (request.method === "GET" && acceptsHtml) {
+        return reply.sendFile("index.html");
+      }
+      return reply.code(404).send({ error: { code: "not_found", message: "Route not found" } });
+    });
+  }
   return server;
+}
+
+function resolveWebRoot(env: Record<string, string | undefined>): string | undefined {
+  if (env.LEDGERFLOW_SERVE_WEB !== "1") {
+    return undefined;
+  }
+  const root = resolve(env.LEDGERFLOW_WEB_ROOT ?? join(process.cwd(), "web", "dist"));
+  return existsSync(join(root, "index.html")) ? root : undefined;
 }
 
 export function createDefaultServerDeps(
