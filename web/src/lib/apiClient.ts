@@ -32,10 +32,10 @@ export interface ApiClientOptions {
 
 export function createApiClient(options: ApiClientOptions = {}) {
   const baseUrl = options.baseUrl ?? import.meta.env.VITE_LEDGERFLOW_API_BASE ?? "";
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = options.fetchImpl;
 
   async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
-    const response = await fetchImpl(`${baseUrl}${path}`, {
+    const response = await (fetchImpl ?? fetch)(toRequestUrl(baseUrl, path), {
       ...init,
       headers: {
         "content-type": "application/json",
@@ -74,6 +74,17 @@ export function createApiClient(options: ApiClientOptions = {}) {
 }
 
 export const apiClient = createApiClient();
+
+function toRequestUrl(baseUrl: string, path: string): string {
+  const combined = `${baseUrl}${path}`;
+  if (/^https?:\/\//.test(combined)) {
+    return combined;
+  }
+  if (typeof window !== "undefined") {
+    return new URL(combined, window.location.origin).toString();
+  }
+  return combined;
+}
 
 function body(method: string, value: unknown): RequestInit {
   return {

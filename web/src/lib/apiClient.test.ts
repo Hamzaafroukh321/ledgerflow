@@ -28,7 +28,7 @@ describe("api client", () => {
     const client = createApiClient({ fetchImpl });
 
     await expect(client.listPlans()).resolves.toHaveLength(1);
-    expect(fetchImpl).toHaveBeenCalledWith("/plans", expect.objectContaining({ headers: expect.any(Object) }));
+    expect(fetchImpl).toHaveBeenCalledWith(expect.stringMatching(/\/plans$/), expect.objectContaining({ headers: expect.any(Object) }));
   });
 
   it("turns error envelopes into typed ApiError instances", async () => {
@@ -72,7 +72,7 @@ describe("api client", () => {
     });
 
     expect(fetchImpl).toHaveBeenCalledWith(
-      "/api/invoices/simulate",
+      expect.stringMatching(/\/api\/invoices\/simulate$/),
       expect.objectContaining({ method: "POST", body: expect.stringContaining("pro_monthly") })
     );
   });

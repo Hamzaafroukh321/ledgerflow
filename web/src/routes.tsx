@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { OverviewPage } from "./pages/OverviewPage";
+import { PlansPage } from "./pages/PlansPage";
 
 export const routes: RouteObject[] = [
   {
@@ -11,6 +12,10 @@ export const routes: RouteObject[] = [
       {
         index: true,
         element: <OverviewPage />
+      },
+      {
+        path: "plans",
+        element: <PlansPage />
       }
     ]
   }
