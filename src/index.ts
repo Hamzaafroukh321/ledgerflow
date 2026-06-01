@@ -4,3 +4,6 @@ export { RoundingMode, roundMinor } from "./money/rounding.js";
 export { loadPlan } from "./plans/plan-repository.js";
 export { priceComponent } from "./plans/pricing.js";
 export type { Plan, PlanType, PriceComponent, PricingTrace, Tier } from "./plans/types.js";
+export { aggregateUsage } from "./usage/aggregate.js";
+export { InMemoryUsageStore, validateUsageEvent } from "./usage/usage-store.js";
+export type { UsageEvent, UsageIngestResult, UsagePeriod } from "./usage/types.js";
