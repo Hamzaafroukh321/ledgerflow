@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,3 +25,46 @@ jobs:
       - run: npm run build
       - run: bash scripts/scan.sh
       - run: bash scripts/smoke.sh
+
+  web:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run e2e
+        working-directory: web
