@@ -12,7 +12,9 @@ import {
   refundResultSchema,
   scenarioComparisonSchema,
   subscriptionAssignmentSchema,
+  usageAggregateSchema,
   usageEventSchema,
+  usageEventsSchema,
   type BillingContext,
   type Invoice
 } from "./schemas";
@@ -82,6 +84,21 @@ export function createApiClient(options: ApiClientOptions = {}) {
       ),
     ingestUsage: (event: unknown) =>
       request("/usage/events", z.object({ accepted: z.boolean(), reason: z.string().optional() }), body("POST", usageEventSchema.parse(event))),
+    listUsageEvents: () => request("/usage/events", usageEventsSchema),
+    aggregateUsage: (input: unknown) =>
+      request(
+        "/usage/aggregate",
+        usageAggregateSchema,
+        body(
+          "POST",
+          z
+            .object({
+              customerId: z.string().optional(),
+              period: z.object({ start: z.string(), end: z.string() })
+            })
+            .parse(input)
+        )
+      ),
     simulateRefund: (input: unknown) =>
       request("/refunds/simulate", refundResultSchema, body("POST", input))
   };

@@ -186,6 +186,9 @@ export const usageEventSchema = z.object({
   timestamp: z.string()
 });
 
+export const usageEventsSchema = z.array(usageEventSchema);
+export const usageAggregateSchema = z.record(z.number());
+
 export const refundResultSchema = z.object({
   allocations: z.array(
     z.object({
@@ -208,3 +211,4 @@ export type Plan = z.infer<typeof planSchema>;
 export type ScenarioComparison = z.infer<typeof scenarioComparisonSchema>;
 export type Customer = z.infer<typeof customerSchema>;
 export type CustomerBillingProfile = z.infer<typeof customerBillingProfileSchema>;
+export type UsageEvent = z.infer<typeof usageEventSchema>;
