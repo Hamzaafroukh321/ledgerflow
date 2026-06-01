@@ -26,3 +26,8 @@ export { createLineItem } from "./invoice/line-item.js";
 export { reconcile, traceNode } from "./invoice/trace.js";
 export type { Invoice, InvoiceTotals, LineItem } from "./invoice/types.js";
 export type { TraceNode } from "./invoice/trace.js";
+export { parseBillingContext, BillingContextSchema } from "./engine/context.js";
+export { defaultInvoiceEngine, InvoiceEngine } from "./engine/InvoiceEngine.js";
+export { pipelineStages } from "./engine/pipeline.js";
+export type { BillingContext } from "./engine/context.js";
+export type { PipelineStage } from "./engine/pipeline.js";
