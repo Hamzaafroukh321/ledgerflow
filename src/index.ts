@@ -20,3 +20,5 @@ export { applyCredits } from "./credits/ledger.js";
 export type { AppliedCredit, Credit, CreditPhase, CreditTrace } from "./credits/types.js";
 export { computeTax } from "./tax/engine.js";
 export type { TaxableLineItem, TaxLine, TaxProfile, TaxTrace } from "./tax/types.js";
+export { prorate } from "./proration/prorate.js";
+export type { DateInterval, ProrationTrace } from "./proration/prorate.js";
