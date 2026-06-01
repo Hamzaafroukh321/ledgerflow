@@ -12,7 +12,7 @@ const sampleInvoice = {
   creditsApplied: [],
   taxLines: [],
   totals: { subtotal: 1000, discountTotal: 0, creditTotal: 0, tax: 0, total: 1000 },
-  explanation: { id: "root", rule: "invoice_total", total: 1000 }
+  explanation: { id: "root", rule: "invoice_total", total: 1000, children: [] }
 };
 
 export function AuditPage() {

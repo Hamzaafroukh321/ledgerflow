@@ -7,9 +7,8 @@ describe("AuditIssues", () => {
   it("groups audit issues by severity", () => {
     render(
       <AuditIssues
-        report={{
-          checkedAt: "now",
-          summary: { valid: false, errors: 1, warnings: 1 },
+      report={{
+          summary: { valid: false, errorCount: 1, warningCount: 1, checkedAt: "now" },
           issues: [
             { code: "bad_total", severity: "error", message: "Total does not reconcile" },
             { code: "missing_id", severity: "warning", message: "Invoice has no ID" }

@@ -71,7 +71,7 @@ describe("SimulatorPage", () => {
               id: "root",
               rule: "invoice_total",
               total: 9900,
-              children: [{ id: "subtotal", rule: "subtotal", total: 9900 }]
+              children: [{ id: "subtotal", rule: "subtotal", total: 9900, children: [] }]
             }
           })
         )

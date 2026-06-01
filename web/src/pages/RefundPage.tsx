@@ -22,8 +22,8 @@ const sampleInvoice = {
     rule: "invoice_total",
     total: 7361,
     children: [
-      { id: "base", rule: "flat_component", total: 5000 },
-      { id: "usage", rule: "usage_component", total: 1800 }
+      { id: "base", rule: "flat_component", total: 5000, children: [] },
+      { id: "usage", rule: "usage_component", total: 1800, children: [] }
     ]
   }
 };
@@ -34,11 +34,13 @@ export function RefundPage() {
   const [amount, setAmount] = useState("25.00");
   const [strategy, setStrategy] = useState<"proportional" | "sequential">("proportional");
   const [formError, setFormError] = useState<string | null>(null);
+  const [refundCurrency, setRefundCurrency] = useState(sampleInvoice.currency);
 
   function simulateRefund() {
     try {
       setFormError(null);
       const invoice = invoiceSchema.parse(JSON.parse(invoiceJson));
+      setRefundCurrency(invoice.currency);
       refund.mutate({
         invoice,
         amountMinor: parseMajorToMinor(amount),
@@ -98,7 +100,7 @@ export function RefundPage() {
             <div className="border-b border-slate-200 px-4 py-3">
               <h2 className="font-semibold text-slate-950">Allocations</h2>
               <p className="text-sm text-slate-600">
-                Credit note: {formatMinor(refund.data.creditNote.amountMinor, refund.data.creditNote.currency)}
+                Credit note: {formatMinor(refund.data.creditNote.amountMinor, refund.data.creditNote.currency ?? refundCurrency)}
               </p>
             </div>
             <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -113,14 +115,14 @@ export function RefundPage() {
                   <tr key={allocation.lineItemId}>
                     <td className="px-4 py-3 font-medium text-slate-950">{allocation.lineItemId}</td>
                     <td className="px-4 py-3 font-mono">
-                      {formatMinor(allocation.amountMinor, refund.data.creditNote.currency)}
+                      {formatMinor(allocation.amountMinor, refund.data.creditNote.currency ?? refundCurrency)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <TraceTree trace={refund.data.trace} currency={refund.data.creditNote.currency} />
+          <TraceTree trace={refund.data.trace} currency={refund.data.creditNote.currency ?? refundCurrency} />
         </section>
       ) : null}
     </div>

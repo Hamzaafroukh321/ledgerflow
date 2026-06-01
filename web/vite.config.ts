@@ -15,6 +15,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    exclude: ["node_modules/**", "dist/**", "coverage/**", "e2e/**", "playwright-report/**", "test-results/**"],
     setupFiles: ["./src/test/setup.ts"],
     testTimeout: 10000,
     coverage: {

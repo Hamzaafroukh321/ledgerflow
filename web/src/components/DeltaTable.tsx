@@ -4,7 +4,7 @@ import { classifyDelta } from "../lib/scenarioDeltas";
 
 type Delta = ScenarioComparison["deltas"][number];
 
-const columns: Array<{ key: keyof Omit<Delta, "candidate" | "validityChanged">; label: string }> = [
+const columns: Array<{ key: keyof Omit<Delta, "from" | "to">; label: string }> = [
   { key: "subtotalDelta", label: "Subtotal" },
   { key: "discountDelta", label: "Discounts" },
   { key: "creditDelta", label: "Credits" },
@@ -14,6 +14,7 @@ const columns: Array<{ key: keyof Omit<Delta, "candidate" | "validityChanged">; 
 
 export function DeltaTable({ comparison, currency }: { comparison: ScenarioComparison; currency?: string }) {
   const displayCurrency = currency ?? comparison.baseline.invoice.currency;
+  const validityByCandidate = new Map(comparison.candidates.map((candidate) => [candidate.name, candidate.audit.summary.valid]));
 
   return (
     <section className="space-y-4">
@@ -36,8 +37,8 @@ export function DeltaTable({ comparison, currency }: { comparison: ScenarioCompa
           </thead>
           <tbody className="divide-y divide-slate-100">
             {comparison.deltas.map((delta) => (
-              <tr key={delta.candidate}>
-                <td className="px-4 py-3 font-medium text-slate-900">{delta.candidate}</td>
+              <tr key={`${delta.from}-${delta.to}`}>
+                <td className="px-4 py-3 font-medium text-slate-900">{delta.to}</td>
                 {columns.map((column) => {
                   const value = delta[column.key];
                   const tone = classifyDelta(value);
@@ -57,7 +58,7 @@ export function DeltaTable({ comparison, currency }: { comparison: ScenarioCompa
                   );
                 })}
                 <td className="px-4 py-3">
-                  {delta.validityChanged ? (
+                  {validityByCandidate.get(delta.to) !== comparison.baseline.audit.summary.valid ? (
                     <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
                       Changed
                     </span>

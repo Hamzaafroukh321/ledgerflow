@@ -33,10 +33,10 @@ describe("schemas", () => {
         id: "root",
         rule: "invoice_total",
         total: 1000,
-        children: [{ id: "subtotal", rule: "subtotal", total: 1000 }]
+        children: [{ id: "subtotal", rule: "subtotal", total: 1000, children: [] }]
       }
     });
 
-    expect(invoice.explanation.children?.[0]?.rule).toBe("subtotal");
+    expect(invoice.explanation.children[0]?.rule).toBe("subtotal");
   });
 });

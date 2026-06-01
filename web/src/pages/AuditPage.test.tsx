@@ -24,8 +24,7 @@ describe("AuditPage", () => {
       vi.fn(async () =>
         new Response(
           JSON.stringify({
-            checkedAt: "now",
-            summary: { valid: true, errors: 0, warnings: 0 },
+            summary: { valid: true, errorCount: 0, warningCount: 0, checkedAt: "now" },
             issues: []
           })
         )

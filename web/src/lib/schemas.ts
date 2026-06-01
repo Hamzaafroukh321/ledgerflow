@@ -19,7 +19,7 @@ export const traceNodeSchema: z.ZodType<TraceNode> = z.lazy(() =>
     rule: z.string(),
     total: z.number().int(),
     inputs: z.record(z.unknown()).optional(),
-    children: z.array(traceNodeSchema).optional()
+    children: z.array(traceNodeSchema)
   })
 );
 
@@ -28,7 +28,7 @@ export interface TraceNode {
   rule: string;
   total: number;
   inputs?: Record<string, unknown>;
-  children?: TraceNode[];
+  children: TraceNode[];
 }
 
 export const lineItemSchema = z.object({
@@ -110,19 +110,18 @@ export const planSchema = z.object({
 export const plansSchema = z.array(planSchema);
 
 export const auditReportSchema = z.object({
-  invoiceId: z.string().optional(),
-  checkedAt: z.string(),
   summary: z.object({
     valid: z.boolean(),
-    errors: z.number().int(),
-    warnings: z.number().int()
+    errorCount: z.number().int(),
+    warningCount: z.number().int(),
+    checkedAt: z.string()
   }),
   issues: z.array(
     z.object({
       code: z.string(),
       severity: z.enum(["error", "warning"]),
       message: z.string(),
-      path: z.array(z.string()).optional(),
+      path: z.union([z.string(), z.array(z.string())]).optional(),
       expected: z.unknown().optional(),
       actual: z.unknown().optional()
     })
@@ -144,13 +143,13 @@ export const scenarioComparisonSchema = z.object({
   ),
   deltas: z.array(
     z.object({
-      candidate: z.string(),
+      from: z.string(),
+      to: z.string(),
       totalDelta: z.number().int(),
       subtotalDelta: z.number().int(),
       taxDelta: z.number().int(),
       discountDelta: z.number().int(),
-      creditDelta: z.number().int(),
-      validityChanged: z.boolean()
+      creditDelta: z.number().int()
     })
   )
 });
@@ -198,8 +197,9 @@ export const refundResultSchema = z.object({
   ),
   creditNote: z.object({
     amountMinor: z.number().int(),
-    currency: z.string(),
-    reason: z.string()
+    currency: z.string().optional(),
+    reason: z.string().optional(),
+    allocations: z.array(z.object({ lineItemId: z.string(), amountMinor: z.number().int() })).optional()
   }),
   trace: traceNodeSchema
 });

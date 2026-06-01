@@ -18,7 +18,7 @@ describe("api client", () => {
     creditsApplied: [],
     taxLines: [],
     totals: { subtotal: 0, discountTotal: 0, creditTotal: 0, tax: 0, total: 0 },
-    explanation: { id: "root", rule: "invoice_total", total: 0 }
+    explanation: { id: "root", rule: "invoice_total", total: 0, children: [] }
   };
 
   it("builds relative requests and validates successful responses", async () => {
@@ -82,14 +82,17 @@ describe("api client", () => {
       const url = String(input);
       if (url.endsWith("/invoices/audit")) {
         return response({
-          checkedAt: "deterministic",
-          summary: { valid: true, errors: 0, warnings: 0 },
+          summary: { valid: true, errorCount: 0, warningCount: 0, checkedAt: "deterministic" },
           issues: []
         });
       }
       if (url.endsWith("/scenarios/compare")) {
         return response({
-          baseline: { name: "base", invoice, audit: { checkedAt: "now", summary: { valid: true, errors: 0, warnings: 0 }, issues: [] } },
+          baseline: {
+            name: "base",
+            invoice,
+            audit: { summary: { valid: true, errorCount: 0, warningCount: 0, checkedAt: "now" }, issues: [] }
+          },
           candidates: [],
           deltas: []
         });
@@ -100,7 +103,7 @@ describe("api client", () => {
       return response({
         allocations: [],
         creditNote: { amountMinor: 100, currency: "USD", reason: "refund" },
-        trace: { id: "root", rule: "refund", total: 100 }
+        trace: { id: "root", rule: "refund", total: 100, children: [] }
       });
     });
     const client = createApiClient({ fetchImpl });

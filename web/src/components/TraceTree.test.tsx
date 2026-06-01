@@ -10,8 +10,8 @@ const trace = {
   rule: "invoice_total",
   total: 1200,
   children: [
-    { id: "subtotal", rule: "subtotal", total: 1000 },
-    { id: "tax", rule: "tax", total: 200 }
+    { id: "subtotal", rule: "subtotal", total: 1000, children: [] },
+    { id: "tax", rule: "tax", total: 200, children: [] }
   ]
 };
 

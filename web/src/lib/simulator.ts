@@ -31,9 +31,11 @@ export const defaultSimulatorValues: SimulatorFormValues = {
 };
 
 export function buildBillingContext(values: SimulatorFormValues) {
+  const creditMinor =
+    values.creditMajor && values.creditMajor.trim().length > 0 ? parseMajorToMinor(values.creditMajor) : 0;
   const credits =
-    values.creditMajor && values.creditMajor.trim().length > 0
-      ? [{ id: "manual_credit", amountMinor: parseMajorToMinor(values.creditMajor), phase: "pre_tax" as const }]
+    creditMinor > 0
+      ? [{ id: "manual_credit", amountMinor: creditMinor, phase: "pre_tax" as const }]
       : [];
 
   return {

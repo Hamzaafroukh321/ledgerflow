@@ -31,7 +31,7 @@ describe("RefundPage", () => {
             id: "refund",
             rule: "proportional_refund_allocation",
             total: 2500,
-            children: [{ id: "refund-base", rule: "refund_line_item", total: 1838 }]
+            children: [{ id: "refund-base", rule: "refund_line_item", total: 1838, children: [] }]
           }
         })
       )

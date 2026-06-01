@@ -36,13 +36,13 @@ describe("ScenarioPage", () => {
           ],
           deltas: [
             {
-              candidate: "Pro candidate",
+              from: "Starter baseline",
+              to: "Pro candidate",
               subtotalDelta: 200,
               discountDelta: -50,
               creditDelta: 0,
               taxDelta: 100,
-              totalDelta: 250,
-              validityChanged: false
+              totalDelta: 250
             }
           ]
         })
@@ -81,14 +81,13 @@ function invoice(total: number) {
     creditsApplied: [],
     taxLines: [],
     totals: { subtotal: total, discountTotal: 0, creditTotal: 0, tax: 0, total },
-    explanation: { id: "root", rule: "invoice_total", total }
+    explanation: { id: "root", rule: "invoice_total", total, children: [] }
   };
 }
 
 function audit(valid: boolean) {
   return {
-    checkedAt: "now",
-    summary: { valid, errors: valid ? 0 : 1, warnings: 0 },
+    summary: { valid, errorCount: valid ? 0 : 1, warningCount: 0, checkedAt: "now" },
     issues: []
   };
 }

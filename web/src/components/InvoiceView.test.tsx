@@ -14,7 +14,7 @@ describe("InvoiceView", () => {
           creditsApplied: [],
           taxLines: [],
           totals: { subtotal: 1200, discountTotal: 0, creditTotal: 0, tax: 0, total: 1200 },
-          explanation: { id: "root", rule: "invoice_total", total: 1200 }
+          explanation: { id: "root", rule: "invoice_total", total: 1200, children: [] }
         }}
       />
     );
