@@ -41,4 +41,22 @@ describe("discounts", () => {
     ]);
     expect(result.lineItems[0]?.discountAmountMinor).toBe(-3000);
   });
+
+  it("rejects invalid coupons before applying them", () => {
+    expect(() =>
+      applyDiscounts(lineItems, [{ code: "BAD", kind: "percent", value: 101, stackable: true }])
+    ).toThrow(/Invalid coupon BAD/);
+  });
+
+  it("rejects discounting line items across mixed currencies", () => {
+    expect(() =>
+      applyDiscounts(
+        [
+          { id: "usd", description: "USD", amountMinor: 1000, currency: "USD" },
+          { id: "eur", description: "EUR", amountMinor: 1000, currency: "EUR" }
+        ],
+        [{ code: "SAVE", kind: "percent", value: 10, stackable: true }]
+      )
+    ).toThrow(/multiple currencies/);
+  });
 });

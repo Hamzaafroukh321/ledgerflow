@@ -90,4 +90,28 @@ describe("api", () => {
     expect(response.json().error.code).toBe("validation_error");
     await server.close();
   });
+
+  it("maps expected domain errors to typed HTTP responses", async () => {
+    const server = buildServer();
+
+    const missingPlan = await server.inject({
+      method: "POST",
+      url: "/invoices/simulate",
+      payload: {
+        ...context,
+        subscription: { planId: "missing", seats: 1, changedOn: null }
+      }
+    });
+    expect(missingPlan.statusCode).toBe(404);
+    expect(missingPlan.json().error.code).toBe("not_found");
+
+    const invalidRefund = await server.inject({
+      method: "POST",
+      url: "/refunds/simulate",
+      payload: { invoice: { ...context }, amountMinor: -1, strategy: "sequential" }
+    });
+    expect(invalidRefund.statusCode).toBe(400);
+    expect(invalidRefund.json().error.code).toBe("validation_error");
+    await server.close();
+  });
 });

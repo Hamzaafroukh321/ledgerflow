@@ -43,4 +43,40 @@ describe("priceComponent", () => {
 
     expect(result.amount.amountMinor).toBe(9995);
   });
+
+  it("rejects unsorted graduated tiers", () => {
+    expect(() =>
+      priceComponent(
+        {
+          id: "bad",
+          name: "Bad tiers",
+          type: "graduated",
+          currency: "USD",
+          tiers: [
+            { upTo: 200, unitAmountMinor: 10 },
+            { upTo: 100, unitAmountMinor: 8 }
+          ]
+        },
+        150
+      )
+    ).toThrow(/strictly increasing/);
+  });
+
+  it("rejects tiers declared after infinity", () => {
+    expect(() =>
+      priceComponent(
+        {
+          id: "bad",
+          name: "Bad tiers",
+          type: "volume",
+          currency: "USD",
+          tiers: [
+            { upTo: "infinity", unitAmountMinor: 10 },
+            { upTo: 500, unitAmountMinor: 8 }
+          ]
+        },
+        150
+      )
+    ).toThrow(/after infinity/);
+  });
 });

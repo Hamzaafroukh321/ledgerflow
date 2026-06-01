@@ -106,8 +106,8 @@ function priceVolume(component: PriceComponent, quantity: number): PriceResult {
 
 function requireUnitAmount(component: PriceComponent): number {
   const unitAmountMinor = component.unitAmountMinor;
-  if (typeof unitAmountMinor !== "number" || !Number.isInteger(unitAmountMinor)) {
-    throw new Error(`Component ${component.id} requires an integer unit amount`);
+  if (typeof unitAmountMinor !== "number" || !Number.isInteger(unitAmountMinor) || unitAmountMinor < 0) {
+    throw new Error(`Component ${component.id} requires a non-negative integer unit amount`);
   }
   return unitAmountMinor;
 }
@@ -115,6 +115,24 @@ function requireUnitAmount(component: PriceComponent): number {
 function requireTiers(component: PriceComponent): Tier[] {
   if (!component.tiers || component.tiers.length === 0) {
     throw new Error(`Component ${component.id} requires tiers`);
+  }
+  let previousLimit = 0;
+  let sawInfinity = false;
+  for (const tier of component.tiers) {
+    if (!Number.isInteger(tier.unitAmountMinor) || tier.unitAmountMinor < 0) {
+      throw new Error(`Component ${component.id} tiers require non-negative integer unit amounts`);
+    }
+    if (tier.upTo === "infinity") {
+      sawInfinity = true;
+      continue;
+    }
+    if (!Number.isInteger(tier.upTo) || tier.upTo <= previousLimit) {
+      throw new Error(`Component ${component.id} tiers must be strictly increasing`);
+    }
+    if (sawInfinity) {
+      throw new Error(`Component ${component.id} cannot define tiers after infinity`);
+    }
+    previousLimit = tier.upTo;
   }
   return component.tiers;
 }

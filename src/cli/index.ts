@@ -20,7 +20,13 @@ program
   .option("--trace")
   .action((options: { input: string; pretty?: boolean; trace?: boolean }) => {
     const invoice = defaultInvoiceEngine.simulate(readJson(options.input));
-    writeJson(options.trace ? invoice : { ...invoice, explanation: undefined }, options.pretty);
+    if (options.trace) {
+      writeJson(invoice, options.pretty);
+      return;
+    }
+    const withoutTrace: Partial<Invoice> = { ...invoice };
+    delete withoutTrace.explanation;
+    writeJson(withoutTrace, options.pretty);
   });
 
 program
@@ -42,7 +48,10 @@ program
   .requiredOption("--invoice <file>")
   .requiredOption("--amount <amountMinor>")
   .requiredOption("--strategy <strategy>")
-  .action((options: { invoice: string; amount: string; strategy: "proportional" | "sequential" }) => {
+  .action((options: { invoice: string; amount: string; strategy: string }) => {
+    if (options.strategy !== "proportional" && options.strategy !== "sequential") {
+      throw new Error(`Unsupported refund strategy: ${options.strategy}`);
+    }
     const invoice = readJson(options.invoice) as Invoice;
     writeJson(allocateRefund(invoice, Number.parseInt(options.amount, 10), options.strategy), true);
   });

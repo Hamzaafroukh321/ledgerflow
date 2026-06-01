@@ -6,11 +6,14 @@ import type {
   DiscountApplication,
   DiscountTrace
 } from "./types.js";
+import { validateCoupon } from "./coupon.js";
 
 export function applyDiscounts(
   lineItems: DiscountableLineItem[],
   coupons: Coupon[]
 ): { lineItems: DiscountableLineItem[]; discounts: DiscountApplication[]; trace: DiscountTrace } {
+  ensureSingleCurrency(lineItems);
+  ensureCouponsValid(coupons);
   ensureStackingAllowed(coupons);
 
   const workingItems = lineItems.map((item) => ({ ...item, discountAmountMinor: 0 }));
@@ -56,6 +59,22 @@ export function applyDiscounts(
       children
     }
   };
+}
+
+function ensureSingleCurrency(lineItems: DiscountableLineItem[]): void {
+  const currencies = new Set(lineItems.map((item) => item.currency));
+  if (currencies.size > 1) {
+    throw new Error("Cannot apply one discount set across multiple currencies");
+  }
+}
+
+function ensureCouponsValid(coupons: Coupon[]): void {
+  for (const coupon of coupons) {
+    const result = validateCoupon(coupon);
+    if (!result.valid) {
+      throw new Error(`Invalid coupon ${coupon.code}: ${result.reason ?? "unknown_reason"}`);
+    }
+  }
 }
 
 function ensureStackingAllowed(coupons: Coupon[]): void {
