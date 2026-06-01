@@ -33,3 +33,6 @@ export type { BillingContext } from "./engine/context.js";
 export type { PipelineStage } from "./engine/pipeline.js";
 export { allocateRefund } from "./refunds/allocate-refund.js";
 export type { CreditNote, RefundAllocation, RefundStrategy, RefundTrace } from "./refunds/types.js";
+export { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "./storage/memory.js";
+export { SqliteStore } from "./storage/sqlite.js";
+export type { CouponRepository, PlanRepository, UsageRepository } from "./storage/repository.js";
