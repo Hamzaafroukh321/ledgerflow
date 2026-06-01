@@ -36,3 +36,7 @@ export type { CreditNote, RefundAllocation, RefundStrategy, RefundTrace } from "
 export { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "./storage/memory.js";
 export { SqliteStore } from "./storage/sqlite.js";
 export type { CouponRepository, PlanRepository, UsageRepository } from "./storage/repository.js";
+export { buildServer } from "./api/server.js";
+export { registerRoutes } from "./api/routes.js";
+export type { ServerDeps } from "./api/server.js";
+export type { RouteDeps } from "./api/routes.js";
