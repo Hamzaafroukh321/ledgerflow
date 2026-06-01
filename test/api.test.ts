@@ -55,6 +55,37 @@ describe("api", () => {
       (
         await server.inject({
           method: "POST",
+          url: "/invoices/audit",
+          payload: invoice
+        })
+      ).json<{ summary: { valid: boolean } }>().summary.valid
+    ).toBe(true);
+
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/scenarios/compare",
+          payload: {
+            baseline: { name: "basic", context },
+            candidates: [
+              {
+                name: "usage",
+                context: {
+                  ...context,
+                  subscription: { planId: "pro_monthly", seats: 2, changedOn: null }
+                }
+              }
+            ]
+          }
+        })
+      ).json<{ deltas: unknown[] }>().deltas
+    ).toHaveLength(1);
+
+    expect(
+      (
+        await server.inject({
+          method: "POST",
           url: "/coupons/validate",
           payload: { code: "SAVE", context: {} }
         })

@@ -12,6 +12,14 @@ Returns configured plans.
 
 Accepts a billing context and returns an invoice with `lineItems`, `discounts`, `creditsApplied`, `taxLines`, `totals`, and `explanation`.
 
+## `POST /invoices/audit`
+
+Accepts an invoice and returns an audit report with invariant violations for totals, trace reconciliation, signs, currencies, and tax sanity.
+
+## `POST /scenarios/compare`
+
+Accepts `{ "baseline": { "name": "...", "context": {} }, "candidates": [{ "name": "...", "context": {} }] }` and returns simulated invoices plus total deltas between baseline and each candidate.
+
 ## `POST /usage/events`
 
 Accepts a usage event keyed by `idempotencyKey`. Duplicate keys return HTTP 409.

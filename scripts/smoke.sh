@@ -16,3 +16,12 @@ node -e "const data = JSON.parse(process.argv[1]); if (data.valid !== true) proc
 
 refund_output="$(node dist/cli/index.js refund --invoice examples/refund-partial.json --amount 1000 --strategy proportional)"
 node -e "const data = JSON.parse(process.argv[1]); if (!data.creditNote || data.creditNote.amountMinor !== 1000) process.exit(1)" "$refund_output"
+
+audit_file="$(mktemp)"
+node dist/cli/index.js simulate --input examples/invoice-basic.json --trace > "$audit_file"
+audit_output="$(node dist/cli/index.js audit --invoice "$audit_file")"
+rm -f "$audit_file"
+node -e "const data = JSON.parse(process.argv[1]); if (!data.summary || data.summary.valid !== true) process.exit(1)" "$audit_output"
+
+compare_output="$(node dist/cli/index.js compare --baseline examples/invoice-basic.json --candidate examples/invoice-usage.json)"
+node -e "const data = JSON.parse(process.argv[1]); if (!Array.isArray(data.deltas) || data.deltas.length !== 1) process.exit(1)" "$compare_output"

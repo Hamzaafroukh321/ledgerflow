@@ -51,3 +51,12 @@ export {
   seedDefaultCoupons,
   seedDefaultPlans
 } from "./catalog/defaults.js";
+export { auditInvoice } from "./audit/invoice-auditor.js";
+export { compareScenarios } from "./scenarios/compare.js";
+export type { AuditIssue, AuditSeverity, AuditSummary, InvoiceAuditReport } from "./audit/types.js";
+export type {
+  ScenarioComparison,
+  ScenarioDelta,
+  ScenarioInput,
+  ScenarioResult
+} from "./scenarios/types.js";

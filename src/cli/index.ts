@@ -4,11 +4,13 @@ import { readFileSync } from "node:fs";
 import { Command } from "commander";
 
 import { buildServer } from "../api/server.js";
+import { auditInvoice } from "../audit/invoice-auditor.js";
 import { DEFAULT_PLANS } from "../catalog/defaults.js";
 import { validateCoupon } from "../discounts/coupon.js";
 import { defaultInvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
 import { allocateRefund } from "../refunds/allocate-refund.js";
+import { compareScenarios } from "../scenarios/compare.js";
 
 const program = new Command();
 
@@ -62,6 +64,31 @@ program
     }
     const invoice = readInvoiceInput(readJson(options.invoice));
     writeJson(allocateRefund(invoice, Number.parseInt(options.amount, 10), options.strategy), true);
+  });
+
+program
+  .command("audit")
+  .requiredOption("--invoice <file>")
+  .option("--pretty")
+  .action((options: { invoice: string; pretty?: boolean }) => {
+    writeJson(auditInvoice(readInvoiceInput(readJson(options.invoice))), options.pretty);
+  });
+
+program
+  .command("compare")
+  .requiredOption("--baseline <file>")
+  .requiredOption("--candidate <file...>")
+  .option("--pretty")
+  .action((options: { baseline: string; candidate: string[]; pretty?: boolean }) => {
+    const baseline = {
+      name: options.baseline,
+      context: readJson(options.baseline)
+    };
+    const candidates = options.candidate.map((file) => ({
+      name: file,
+      context: readJson(file)
+    }));
+    writeJson(compareScenarios(baseline, candidates, defaultInvoiceEngine), options.pretty);
   });
 
 program

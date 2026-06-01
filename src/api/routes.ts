@@ -8,6 +8,8 @@ import type { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
 import { validateCoupon } from "../discounts/coupon.js";
 import { aggregateUsage } from "../usage/aggregate.js";
+import { auditInvoice } from "../audit/invoice-auditor.js";
+import { compareScenarios } from "../scenarios/compare.js";
 
 export interface RouteDeps {
   engine: InvoiceEngine;
@@ -60,6 +62,16 @@ const refundSchema = z.object({
   strategy: z.enum(["proportional", "sequential"])
 });
 
+const scenarioInputSchema = z.object({
+  name: z.string().min(1),
+  context: z.unknown()
+});
+
+const scenarioComparisonSchema = z.object({
+  baseline: scenarioInputSchema,
+  candidates: z.array(scenarioInputSchema).min(1)
+});
+
 const validateCouponSchema = z.object({
   code: z.string(),
   context: z.record(z.unknown()).optional()
@@ -103,6 +115,20 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
   server.get("/plans", async () => deps.plans.list());
 
   server.post("/invoices/simulate", async (request) => deps.engine.simulate(request.body));
+
+  server.post("/invoices/audit", async (request) => {
+    const invoice = invoiceSchema.parse(request.body);
+    return auditInvoice(invoice as Invoice);
+  });
+
+  server.post("/scenarios/compare", async (request) => {
+    const body = scenarioComparisonSchema.parse(request.body);
+    return compareScenarios(
+      { name: body.baseline.name, context: body.baseline.context },
+      body.candidates.map((candidate) => ({ name: candidate.name, context: candidate.context })),
+      deps.engine
+    );
+  });
 
   server.post("/usage/events", async (request, reply) => {
     const event = UsageEventSchema.parse(request.body);
