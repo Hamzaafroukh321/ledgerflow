@@ -31,3 +31,5 @@ export { defaultInvoiceEngine, InvoiceEngine } from "./engine/InvoiceEngine.js";
 export { pipelineStages } from "./engine/pipeline.js";
 export type { BillingContext } from "./engine/context.js";
 export type { PipelineStage } from "./engine/pipeline.js";
+export { allocateRefund } from "./refunds/allocate-refund.js";
+export type { CreditNote, RefundAllocation, RefundStrategy, RefundTrace } from "./refunds/types.js";
