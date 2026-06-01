@@ -6,6 +6,7 @@ import { FieldRow } from "../components/forms/FieldRow";
 import { MoneyInput } from "../components/forms/MoneyInput";
 import { PlanSelect } from "../components/forms/PlanSelect";
 import { InvoiceView } from "../components/InvoiceView";
+import { TraceTree } from "../components/TraceTree";
 import { ApiError } from "../lib/apiClient";
 import { buildBillingContext, defaultSimulatorValues, simulatorFormSchema, type SimulatorFormValues } from "../lib/simulator";
 import { useSimulateInvoice } from "../hooks/useSimulateInvoice";
@@ -82,7 +83,12 @@ export function SimulatorPage() {
             </p>
           </section>
         ) : null}
-        {simulation.data ? <InvoiceView invoice={simulation.data} /> : null}
+        {simulation.data ? (
+          <>
+            <InvoiceView invoice={simulation.data} />
+            <TraceTree currency={simulation.data.currency} trace={simulation.data.explanation} />
+          </>
+        ) : null}
         <aside className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="font-semibold">Context preview</h3>
           <pre className="mt-4 max-h-[34rem] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-50">

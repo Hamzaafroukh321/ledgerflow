@@ -67,7 +67,12 @@ describe("SimulatorPage", () => {
             creditsApplied: [],
             taxLines: [],
             totals: { subtotal: 9900, discountTotal: 0, creditTotal: 0, tax: 0, total: 9900 },
-            explanation: { id: "root", rule: "invoice_total", total: 9900 }
+            explanation: {
+              id: "root",
+              rule: "invoice_total",
+              total: 9900,
+              children: [{ id: "subtotal", rule: "subtotal", total: 9900 }]
+            }
           })
         )
       )
@@ -81,5 +86,6 @@ describe("SimulatorPage", () => {
     expect(await screen.findByText(/"seats": 9/i)).toBeInTheDocument();
     expect(await screen.findByText("Base subscription")).toBeInTheDocument();
     expect(screen.getAllByText("$99.00").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /collapse invoice_total/i })).toBeInTheDocument();
   });
 });
