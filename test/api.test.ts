@@ -91,6 +91,17 @@ describe("api", () => {
     });
     expect(conflictingUsage.statusCode).toBe(409);
     expect(conflictingUsage.json().reason).toBe("idempotency_conflict");
+
+    const events = (await server.inject({ method: "GET", url: "/usage/events" })).json<unknown[]>();
+    expect(events).toHaveLength(1);
+
+    const aggregate = await server.inject({
+      method: "POST",
+      url: "/usage/aggregate",
+      payload: { customerId: "cus_1", period: { start: "2025-01-01", end: "2025-02-01" } }
+    });
+    expect(aggregate.statusCode).toBe(200);
+    expect(aggregate.json()).toEqual({ api: 1 });
     await server.close();
   });
 

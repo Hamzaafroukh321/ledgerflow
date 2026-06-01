@@ -7,6 +7,7 @@ import { UsageEventSchema } from "./schemas.js";
 import type { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
 import { validateCoupon } from "../discounts/coupon.js";
+import { aggregateUsage } from "../usage/aggregate.js";
 
 export interface RouteDeps {
   engine: InvoiceEngine;
@@ -64,6 +65,14 @@ const validateCouponSchema = z.object({
   context: z.record(z.unknown()).optional()
 });
 
+const usageAggregateSchema = z.object({
+  customerId: z.string().optional(),
+  period: z.object({
+    start: z.string(),
+    end: z.string()
+  })
+});
+
 export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
   server.setErrorHandler((error, _request, reply) => {
     if (error instanceof z.ZodError) {
@@ -102,6 +111,17 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       return reply.status(409).send(result);
     }
     return result;
+  });
+
+  server.get("/usage/events", async () => deps.usage.list());
+
+  server.post("/usage/aggregate", async (request) => {
+    const body = usageAggregateSchema.parse(request.body);
+    const events = deps
+      .usage
+      .list()
+      .filter((event) => !body.customerId || event.customerId === body.customerId);
+    return Object.fromEntries(aggregateUsage(events, body.period));
   });
 
   server.post("/coupons/validate", async (request, reply) => {
