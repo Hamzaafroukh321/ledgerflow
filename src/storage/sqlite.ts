@@ -3,9 +3,15 @@ import Database from "better-sqlite3";
 import type { Customer, SubscriptionAssignment } from "../customers/types.js";
 import type { Coupon } from "../discounts/types.js";
 import type { Plan } from "../plans/types.js";
+import type { SimulationRun } from "../simulations/types.js";
 import { sameUsageEvent, validateUsageEvent } from "../usage/usage-store.js";
 import type { UsageEvent, UsageIngestResult } from "../usage/types.js";
-import type { CouponRepository, PlanRepository, UsageRepository } from "./repository.js";
+import type {
+  CouponRepository,
+  PlanRepository,
+  SimulationRunRepository,
+  UsageRepository
+} from "./repository.js";
 import type { CustomerRepository } from "../customers/repository.js";
 
 export class SqliteStore {
@@ -158,6 +164,38 @@ export class SqliteStore {
       );
   }
 
+  public listSimulationRuns(): SimulationRun[] {
+    const rows = this.db
+      .prepare(
+        "SELECT id, name, created_at, context_json, invoice_json FROM simulation_runs ORDER BY created_at DESC, id"
+      )
+      .all() as SimulationRunRow[];
+    return rows.map((row) => this.simulationRunFromRow(row));
+  }
+
+  public getSimulationRun(runId: string): SimulationRun | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT id, name, created_at, context_json, invoice_json FROM simulation_runs WHERE id = ?"
+      )
+      .get(runId) as SimulationRunRow | undefined;
+    return row ? this.simulationRunFromRow(row) : undefined;
+  }
+
+  public saveSimulationRun(run: SimulationRun): void {
+    this.db
+      .prepare(
+        "INSERT OR REPLACE INTO simulation_runs (id, name, created_at, context_json, invoice_json) VALUES (?, ?, ?, ?, ?)"
+      )
+      .run(
+        run.id,
+        run.name,
+        run.createdAt,
+        JSON.stringify(run.context),
+        JSON.stringify(run.invoice)
+      );
+  }
+
   private getUsageEvent(idempotencyKey: string): UsageEvent | undefined {
     const row = this.db
       .prepare(
@@ -187,6 +225,16 @@ export class SqliteStore {
       customer.email = row.email;
     }
     return customer;
+  }
+
+  private simulationRunFromRow(row: SimulationRunRow): SimulationRun {
+    return {
+      id: row.id,
+      name: row.name,
+      createdAt: row.created_at,
+      context: JSON.parse(row.context_json) as SimulationRun["context"],
+      invoice: JSON.parse(row.invoice_json) as SimulationRun["invoice"]
+    };
   }
 
   private getPlan(planId: string): Plan | undefined {
@@ -298,6 +346,13 @@ export class SqliteStore {
         ends_on TEXT,
         PRIMARY KEY (customer_id, plan_id, starts_on)
       );
+      CREATE TABLE IF NOT EXISTS simulation_runs (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        context_json TEXT NOT NULL,
+        invoice_json TEXT NOT NULL
+      );
     `);
   }
 }
@@ -404,6 +459,30 @@ export class SqliteCustomerRepository implements CustomerRepository {
   }
 }
 
+export class SqliteSimulationRunRepository implements SimulationRunRepository {
+  private readonly store: SqliteStore;
+
+  public constructor(path = ":memory:") {
+    this.store = new SqliteStore(path);
+  }
+
+  public list(): SimulationRun[] {
+    return this.store.listSimulationRuns();
+  }
+
+  public get(runId: string): SimulationRun | undefined {
+    return this.store.getSimulationRun(runId);
+  }
+
+  public save(run: SimulationRun): void {
+    this.store.saveSimulationRun(run);
+  }
+
+  public close(): void {
+    this.store.close();
+  }
+}
+
 interface PlanRow {
   id: string;
   name: string;
@@ -444,4 +523,12 @@ interface SubscriptionRow {
   seats: number;
   starts_on: string;
   ends_on: string | null;
+}
+
+interface SimulationRunRow {
+  id: string;
+  name: string;
+  created_at: string;
+  context_json: string;
+  invoice_json: string;
 }

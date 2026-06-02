@@ -15,13 +15,20 @@ import { registerErrorHandler } from "../errors/handler.js";
 import {
   MemoryCouponRepository,
   MemoryPlanRepository,
+  MemorySimulationRunRepository,
   MemoryUsageRepository
 } from "../storage/memory.js";
-import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
+import type {
+  CouponRepository,
+  PlanRepository,
+  SimulationRunRepository,
+  UsageRepository
+} from "../storage/repository.js";
 import {
   SqliteCouponRepository,
   SqliteCustomerRepository,
   SqlitePlanRepository,
+  SqliteSimulationRunRepository,
   SqliteUsageRepository
 } from "../storage/sqlite.js";
 import { registerRoutes } from "./routes.js";
@@ -32,6 +39,7 @@ export interface ServerDeps {
   usage?: UsageRepository;
   coupons?: CouponRepository;
   customers?: CustomerRepository;
+  simulations?: SimulationRunRepository;
 }
 
 export function buildServer(
@@ -59,7 +67,8 @@ export function buildServer(
     plans: deps.plans ?? defaults.plans,
     usage: deps.usage ?? defaults.usage,
     coupons: deps.coupons ?? defaults.coupons,
-    customers: deps.customers ?? defaults.customers
+    customers: deps.customers ?? defaults.customers,
+    simulations: deps.simulations ?? defaults.simulations
   });
   server.get("/openapi.json", async () => server.swagger());
   if (webRoot) {
@@ -84,7 +93,13 @@ function resolveWebRoot(env: Record<string, string | undefined>): string | undef
 }
 
 function closeServerDeps(deps: Required<ServerDeps>): void {
-  for (const repository of [deps.plans, deps.usage, deps.coupons, deps.customers]) {
+  for (const repository of [
+    deps.plans,
+    deps.usage,
+    deps.coupons,
+    deps.customers,
+    deps.simulations
+  ]) {
     if ("close" in repository && typeof repository.close === "function") {
       repository.close();
     }
@@ -99,6 +114,7 @@ export function createDefaultServerDeps(
     const plans = new SqlitePlanRepository(dbPath);
     const usage = new SqliteUsageRepository(dbPath);
     const coupons = new SqliteCouponRepository(dbPath);
+    const simulations = new SqliteSimulationRunRepository(dbPath);
     seedDefaultPlans(plans);
     seedDefaultCoupons(coupons);
     return {
@@ -106,13 +122,15 @@ export function createDefaultServerDeps(
       plans,
       usage,
       coupons,
-      customers: new SqliteCustomerRepository(dbPath)
+      customers: new SqliteCustomerRepository(dbPath),
+      simulations
     };
   }
 
   const plans = new MemoryPlanRepository();
   const usage = new MemoryUsageRepository();
   const coupons = new MemoryCouponRepository();
+  const simulations = new MemorySimulationRunRepository();
   seedDefaultPlans(plans);
   seedDefaultCoupons(coupons);
   return {
@@ -120,6 +138,7 @@ export function createDefaultServerDeps(
     plans,
     usage,
     coupons,
-    customers: new MemoryCustomerRepository()
+    customers: new MemoryCustomerRepository(),
+    simulations
   };
 }

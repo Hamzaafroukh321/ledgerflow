@@ -12,7 +12,10 @@ import { auditInvoice } from "../audit/invoice-auditor.js";
 import { assignSubscription, createCustomer, resolveBillingProfile } from "../customers/profile.js";
 import type { CustomerRepository } from "../customers/repository.js";
 import { compareScenarios } from "../scenarios/compare.js";
+import { createSimulationRun } from "../simulations/runs.js";
 import type { TaxProfile } from "../tax/types.js";
+import type { SimulationRunRepository } from "../storage/repository.js";
+import { BillingContextSchema } from "../engine/context.js";
 
 export interface RouteDeps {
   engine: InvoiceEngine;
@@ -20,6 +23,7 @@ export interface RouteDeps {
   usage: UsageRepository;
   coupons: CouponRepository;
   customers: CustomerRepository;
+  simulations: SimulationRunRepository;
 }
 
 const invoiceSchema = z.object({
@@ -115,12 +119,47 @@ const billingProfileSchema = z.object({
   onDate: z.string()
 });
 
+const simulationRunSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  context: z.unknown()
+});
+
 export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
   server.get("/health", async () => ({ status: "ok" }));
 
   server.get("/plans", async () => deps.plans.list());
 
   server.post("/invoices/simulate", async (request) => deps.engine.simulate(request.body));
+
+  server.get("/simulations", async () => deps.simulations.list());
+
+  server.get("/simulations/:runId", async (request, reply) => {
+    const params = z.object({ runId: z.string() }).parse(request.params);
+    const run = deps.simulations.get(params.runId);
+    if (!run) {
+      return reply.status(404).send({
+        error: { code: "not_found", message: `Simulation run not found: ${params.runId}` }
+      });
+    }
+    return run;
+  });
+
+  server.post("/simulations", async (request) => {
+    const body = simulationRunSchema.parse(request.body);
+    const context = BillingContextSchema.parse(body.context);
+    const invoice = deps.engine.simulate(context);
+    const runInput: Parameters<typeof createSimulationRun>[0] = { context, invoice };
+    if (body.id !== undefined) {
+      runInput.id = body.id;
+    }
+    if (body.name !== undefined) {
+      runInput.name = body.name;
+    }
+    const run = createSimulationRun(runInput);
+    deps.simulations.save(run);
+    return run;
+  });
 
   server.post("/invoices/audit", async (request) => {
     const invoice = invoiceSchema.parse(request.body);
@@ -149,8 +188,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.post("/usage/aggregate", async (request) => {
     const body = usageAggregateSchema.parse(request.body);
-    const events = deps
-      .usage
+    const events = deps.usage
       .list()
       .filter((event) => !body.customerId || event.customerId === body.customerId);
     return Object.fromEntries(aggregateUsage(events, body.period));
@@ -212,7 +250,11 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
         error: { code: "not_found", message: `Customer not found: ${params.customerId}` }
       });
     }
-    return resolveBillingProfile(customer, deps.customers.listSubscriptions(params.customerId), query.onDate);
+    return resolveBillingProfile(
+      customer,
+      deps.customers.listSubscriptions(params.customerId),
+      query.onDate
+    );
   });
 
   server.post("/refunds/simulate", async (request) => {

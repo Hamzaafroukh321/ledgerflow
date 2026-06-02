@@ -36,16 +36,23 @@ export type { CreditNote, RefundAllocation, RefundStrategy, RefundTrace } from "
 export {
   MemoryCouponRepository,
   MemoryPlanRepository,
+  MemorySimulationRunRepository,
   MemoryUsageRepository
 } from "./storage/memory.js";
 export {
   SqliteCouponRepository,
   SqliteCustomerRepository,
   SqlitePlanRepository,
+  SqliteSimulationRunRepository,
   SqliteStore,
   SqliteUsageRepository
 } from "./storage/sqlite.js";
-export type { CouponRepository, PlanRepository, UsageRepository } from "./storage/repository.js";
+export type {
+  CouponRepository,
+  PlanRepository,
+  SimulationRunRepository,
+  UsageRepository
+} from "./storage/repository.js";
 export { buildServer, createDefaultServerDeps } from "./api/server.js";
 export { registerRoutes } from "./api/routes.js";
 export type { ServerDeps } from "./api/server.js";
@@ -60,6 +67,7 @@ export { auditInvoice } from "./audit/invoice-auditor.js";
 export { assignSubscription, createCustomer, resolveBillingProfile } from "./customers/profile.js";
 export { MemoryCustomerRepository } from "./customers/repository.js";
 export { compareScenarios } from "./scenarios/compare.js";
+export { createSimulationRun } from "./simulations/runs.js";
 export type { AuditIssue, AuditSeverity, AuditSummary, InvoiceAuditReport } from "./audit/types.js";
 export type {
   Customer,
@@ -67,6 +75,7 @@ export type {
   SubscriptionAssignment
 } from "./customers/types.js";
 export type { CustomerRepository } from "./customers/repository.js";
+export type { SimulationRun } from "./simulations/types.js";
 export type {
   ScenarioComparison,
   ScenarioDelta,

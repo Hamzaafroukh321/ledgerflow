@@ -1,8 +1,14 @@
 import type { Coupon } from "../discounts/types.js";
 import type { Plan } from "../plans/types.js";
+import type { SimulationRun } from "../simulations/types.js";
 import { sameUsageEvent, validateUsageEvent } from "../usage/usage-store.js";
 import type { UsageEvent, UsageIngestResult } from "../usage/types.js";
-import type { CouponRepository, PlanRepository, UsageRepository } from "./repository.js";
+import type {
+  CouponRepository,
+  PlanRepository,
+  SimulationRunRepository,
+  UsageRepository
+} from "./repository.js";
 
 export class MemoryPlanRepository implements PlanRepository {
   private readonly plans = new Map<string, Plan>();
@@ -55,5 +61,24 @@ export class MemoryCouponRepository implements CouponRepository {
 
   public save(coupon: Coupon): void {
     this.coupons.set(coupon.code, { ...coupon });
+  }
+}
+
+export class MemorySimulationRunRepository implements SimulationRunRepository {
+  private readonly runs = new Map<string, SimulationRun>();
+
+  public list(): SimulationRun[] {
+    return [...this.runs.values()]
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map((run) => structuredClone(run));
+  }
+
+  public get(runId: string): SimulationRun | undefined {
+    const run = this.runs.get(runId);
+    return run ? structuredClone(run) : undefined;
+  }
+
+  public save(run: SimulationRun): void {
+    this.runs.set(run.id, structuredClone(run));
   }
 }

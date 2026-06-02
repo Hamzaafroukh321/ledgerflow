@@ -10,10 +10,12 @@ import {
   AppError,
   MemoryCouponRepository,
   MemoryPlanRepository,
+  MemorySimulationRunRepository,
   MemoryUsageRepository,
   SqliteCouponRepository,
   SqliteCustomerRepository,
   SqlitePlanRepository,
+  SqliteSimulationRunRepository,
   SqliteUsageRepository,
   type BillingContext,
   type Invoice,
@@ -302,6 +304,42 @@ describe("api", () => {
     await server.close();
   });
 
+  it("creates, lists, and retrieves saved simulation runs", async () => {
+    const server = buildServer();
+    const created = await server.inject({
+      method: "POST",
+      url: "/simulations",
+      payload: {
+        id: "sim_api",
+        name: "API simulation",
+        context
+      }
+    });
+
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject({
+      id: "sim_api",
+      name: "API simulation",
+      context,
+      invoice: { totals: { total: 2900 } }
+    });
+    expect(typeof created.json().createdAt).toBe("string");
+
+    const list = await server.inject({ method: "GET", url: "/simulations" });
+    expect(list.statusCode).toBe(200);
+    expect(list.json()).toHaveLength(1);
+    expect(list.json()[0]).toMatchObject({ id: "sim_api", invoice: { totals: { total: 2900 } } });
+
+    const fetched = await server.inject({ method: "GET", url: "/simulations/sim_api" });
+    expect(fetched.statusCode).toBe(200);
+    expect(fetched.json()).toEqual(created.json());
+
+    const missing = await server.inject({ method: "GET", url: "/simulations/missing" });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json().error.code).toBe("not_found");
+    await server.close();
+  });
+
   it("validates refund invoice shape before allocation", async () => {
     const server = buildServer();
     const response = await server.inject({
@@ -322,6 +360,7 @@ describe("api", () => {
     expect(deps.usage).toBeInstanceOf(SqliteUsageRepository);
     expect(deps.coupons).toBeInstanceOf(SqliteCouponRepository);
     expect(deps.customers).toBeInstanceOf(SqliteCustomerRepository);
+    expect(deps.simulations).toBeInstanceOf(SqliteSimulationRunRepository);
     expect(
       deps.plans
         .list()
@@ -340,6 +379,9 @@ describe("api", () => {
     }
     if (deps.customers instanceof SqliteCustomerRepository) {
       deps.customers.close();
+    }
+    if (deps.simulations instanceof SqliteSimulationRunRepository) {
+      deps.simulations.close();
     }
   });
 
@@ -404,5 +446,6 @@ describe("api", () => {
     expect(deps.plans).toBeInstanceOf(MemoryPlanRepository);
     expect(deps.usage).toBeInstanceOf(MemoryUsageRepository);
     expect(deps.coupons).toBeInstanceOf(MemoryCouponRepository);
+    expect(deps.simulations).toBeInstanceOf(MemorySimulationRunRepository);
   });
 });
