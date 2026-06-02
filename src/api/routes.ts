@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { allocateRefund } from "../refunds/allocate-refund.js";
@@ -24,6 +24,7 @@ export interface RouteDeps {
   coupons: CouponRepository;
   customers: CustomerRepository;
   simulations: SimulationRunRepository;
+  serveWeb?: boolean;
 }
 
 const invoiceSchema = z.object({
@@ -128,11 +129,21 @@ const simulationRunSchema = z.object({
 export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
   server.get("/health", async () => ({ status: "ok" }));
 
-  server.get("/plans", async () => deps.plans.list());
+  server.get("/plans", async (request, reply) => {
+    if (serveWebRoute(request, reply, deps)) {
+      return reply;
+    }
+    return deps.plans.list();
+  });
 
   server.post("/invoices/simulate", async (request) => deps.engine.simulate(request.body));
 
-  server.get("/simulations", async () => deps.simulations.list());
+  server.get("/simulations", async (request, reply) => {
+    if (serveWebRoute(request, reply, deps)) {
+      return reply;
+    }
+    return deps.simulations.list();
+  });
 
   server.get("/simulations/:runId", async (request, reply) => {
     const params = z.object({ runId: z.string() }).parse(request.params);
@@ -205,7 +216,12 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     return validateCoupon(coupon);
   });
 
-  server.get("/customers", async () => deps.customers.listCustomers());
+  server.get("/customers", async (request, reply) => {
+    if (serveWebRoute(request, reply, deps)) {
+      return reply;
+    }
+    return deps.customers.listCustomers();
+  });
 
   server.post("/customers", async (request) => {
     const body = customerSchema.parse(request.body);
@@ -261,6 +277,14 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     const body = refundSchema.parse(request.body);
     return allocateRefund(body.invoice as Invoice, body.amountMinor, body.strategy);
   });
+}
+
+function serveWebRoute(request: FastifyRequest, reply: FastifyReply, deps: RouteDeps): boolean {
+  if (!deps.serveWeb || request.headers.accept?.includes("text/html") !== true) {
+    return false;
+  }
+  reply.callNotFound();
+  return true;
 }
 
 function cleanTaxProfile(input: {

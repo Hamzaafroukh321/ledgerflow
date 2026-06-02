@@ -11,6 +11,8 @@ import {
   plansSchema,
   refundResultSchema,
   scenarioComparisonSchema,
+  simulationRunSchema,
+  simulationsSchema,
   subscriptionAssignmentSchema,
   usageAggregateSchema,
   usageEventSchema,
@@ -67,7 +69,29 @@ export function createApiClient(options: ApiClientOptions = {}) {
   return {
     listPlans: () => request("/plans", plansSchema),
     simulateInvoice: (context: BillingContext) =>
-      request("/invoices/simulate", invoiceSchema, body("POST", billingContextSchema.parse(context))),
+      request(
+        "/invoices/simulate",
+        invoiceSchema,
+        body("POST", billingContextSchema.parse(context))
+      ),
+    listSimulations: () => request("/simulations", simulationsSchema),
+    createSimulation: (input: unknown) =>
+      request(
+        "/simulations",
+        simulationRunSchema,
+        body(
+          "POST",
+          z
+            .object({
+              id: z.string().optional(),
+              name: z.string().optional(),
+              context: billingContextSchema
+            })
+            .parse(input)
+        )
+      ),
+    getSimulation: (runId: string) =>
+      request(`/simulations/${encodeURIComponent(runId)}`, simulationRunSchema),
     auditInvoice: (invoice: Invoice) =>
       request("/invoices/audit", auditReportSchema, body("POST", invoiceSchema.parse(invoice))),
     compareScenarios: (input: unknown) =>
@@ -76,14 +100,22 @@ export function createApiClient(options: ApiClientOptions = {}) {
     createCustomer: (input: unknown) =>
       request("/customers", customerSchema, body("POST", customerSchema.parse(input))),
     assignSubscription: (input: unknown) =>
-      request("/subscriptions", subscriptionAssignmentSchema, body("POST", subscriptionAssignmentSchema.parse(input))),
+      request(
+        "/subscriptions",
+        subscriptionAssignmentSchema,
+        body("POST", subscriptionAssignmentSchema.parse(input))
+      ),
     getBillingProfile: (customerId: string, onDate: string) =>
       request(
         `/customers/${encodeURIComponent(customerId)}/billing-profile?onDate=${encodeURIComponent(onDate)}`,
         customerBillingProfileSchema
       ),
     ingestUsage: (event: unknown) =>
-      request("/usage/events", z.object({ accepted: z.boolean(), reason: z.string().optional() }), body("POST", usageEventSchema.parse(event))),
+      request(
+        "/usage/events",
+        z.object({ accepted: z.boolean(), reason: z.string().optional() }),
+        body("POST", usageEventSchema.parse(event))
+      ),
     listUsageEvents: () => request("/usage/events", usageEventsSchema),
     aggregateUsage: (input: unknown) =>
       request(

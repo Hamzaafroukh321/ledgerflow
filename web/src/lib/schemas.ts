@@ -177,6 +177,16 @@ export const customerBillingProfileSchema = z.object({
   activeSubscription: subscriptionAssignmentSchema.optional()
 });
 
+export const simulationRunSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  context: billingContextSchema,
+  invoice: invoiceSchema
+});
+
+export const simulationsSchema = z.array(simulationRunSchema);
+
 export const usageEventSchema = z.object({
   idempotencyKey: z.string(),
   customerId: z.string(),
@@ -199,7 +209,9 @@ export const refundResultSchema = z.object({
     amountMinor: z.number().int(),
     currency: z.string().optional(),
     reason: z.string().optional(),
-    allocations: z.array(z.object({ lineItemId: z.string(), amountMinor: z.number().int() })).optional()
+    allocations: z
+      .array(z.object({ lineItemId: z.string(), amountMinor: z.number().int() }))
+      .optional()
   }),
   trace: traceNodeSchema
 });
@@ -211,4 +223,5 @@ export type Plan = z.infer<typeof planSchema>;
 export type ScenarioComparison = z.infer<typeof scenarioComparisonSchema>;
 export type Customer = z.infer<typeof customerSchema>;
 export type CustomerBillingProfile = z.infer<typeof customerBillingProfileSchema>;
+export type SimulationRun = z.infer<typeof simulationRunSchema>;
 export type UsageEvent = z.infer<typeof usageEventSchema>;

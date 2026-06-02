@@ -7,6 +7,7 @@ import { OverviewPage } from "./pages/OverviewPage";
 import { PlansPage } from "./pages/PlansPage";
 import { RefundPage } from "./pages/RefundPage";
 import { ScenarioPage } from "./pages/ScenarioPage";
+import { SimulationsPage } from "./pages/SimulationsPage";
 import { SimulatorPage } from "./pages/SimulatorPage";
 import { UsagePage } from "./pages/UsagePage";
 
@@ -26,6 +27,10 @@ export const routes: RouteObject[] = [
       {
         path: "simulator",
         element: <SimulatorPage />
+      },
+      {
+        path: "simulations",
+        element: <SimulationsPage />
       },
       {
         path: "audit",

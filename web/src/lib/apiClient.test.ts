@@ -23,12 +23,17 @@ describe("api client", () => {
 
   it("builds relative requests and validates successful responses", async () => {
     const fetchImpl = vi.fn(async () =>
-      response([{ id: "pro_monthly", name: "Pro", type: "per_seat", currency: "USD", components: [] }])
+      response([
+        { id: "pro_monthly", name: "Pro", type: "per_seat", currency: "USD", components: [] }
+      ])
     );
     const client = createApiClient({ fetchImpl });
 
     await expect(client.listPlans()).resolves.toHaveLength(1);
-    expect(fetchImpl).toHaveBeenCalledWith(expect.stringMatching(/\/plans$/), expect.objectContaining({ headers: expect.any(Object) }));
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.stringMatching(/\/plans$/),
+      expect.objectContaining({ headers: expect.any(Object) })
+    );
   });
 
   it("turns error envelopes into typed ApiError instances", async () => {
@@ -45,7 +50,9 @@ describe("api client", () => {
   });
 
   it("turns non-envelope failures into generic ApiError instances", async () => {
-    const fetchImpl = vi.fn(async () => response({ message: "Nope" }, { status: 500, statusText: "Server Error" }));
+    const fetchImpl = vi.fn(async () =>
+      response({ message: "Nope" }, { status: 500, statusText: "Server Error" })
+    );
     const client = createApiClient({ fetchImpl });
 
     await expect(client.listPlans()).rejects.toMatchObject({
@@ -56,9 +63,7 @@ describe("api client", () => {
   });
 
   it("sends JSON bodies for simulations", async () => {
-    const fetchImpl = vi.fn(async () =>
-      response(invoice)
-    );
+    const fetchImpl = vi.fn(async () => response(invoice));
     const client = createApiClient({ baseUrl: "/api", fetchImpl });
 
     await client.simulateInvoice({
@@ -77,6 +82,41 @@ describe("api client", () => {
     );
   });
 
+  it("wraps saved simulation run endpoints", async () => {
+    const run = {
+      id: "sim_1",
+      name: "Review run",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      context: {
+        currency: "USD",
+        period: { start: "2026-01-01", end: "2026-02-01" },
+        customer: { id: "cus_1", taxProfile: { exempt: true, jurisdiction: "US" } },
+        subscription: { planId: "pro_monthly", seats: 1 },
+        usage: [],
+        coupons: [],
+        credits: []
+      },
+      invoice
+    };
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/simulations") && init?.method !== "POST") {
+        return response([run]);
+      }
+      if (url.endsWith("/simulations") && init?.method === "POST") {
+        return response(run);
+      }
+      return response(run);
+    });
+    const client = createApiClient({ baseUrl: "/api", fetchImpl });
+
+    await expect(client.listSimulations()).resolves.toEqual([run]);
+    await expect(client.getSimulation("sim_1")).resolves.toEqual(run);
+    await expect(
+      client.createSimulation({ name: "Review run", context: run.context })
+    ).resolves.toEqual(run);
+  });
+
   it("wraps audit, scenario, usage, and refund endpoints", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -91,7 +131,10 @@ describe("api client", () => {
           baseline: {
             name: "base",
             invoice,
-            audit: { summary: { valid: true, errorCount: 0, warningCount: 0, checkedAt: "now" }, issues: [] }
+            audit: {
+              summary: { valid: true, errorCount: 0, warningCount: 0, checkedAt: "now" },
+              issues: []
+            }
           },
           candidates: [],
           deltas: []
@@ -109,7 +152,9 @@ describe("api client", () => {
     const client = createApiClient({ fetchImpl });
 
     await expect(client.auditInvoice(invoice)).resolves.toMatchObject({ summary: { valid: true } });
-    await expect(client.compareScenarios({ baseline: {}, candidates: [] })).resolves.toMatchObject({ deltas: [] });
+    await expect(client.compareScenarios({ baseline: {}, candidates: [] })).resolves.toMatchObject({
+      deltas: []
+    });
     await expect(
       client.ingestUsage({
         idempotencyKey: "u1",
@@ -119,7 +164,9 @@ describe("api client", () => {
         timestamp: "2026-01-01T00:00:00.000Z"
       })
     ).resolves.toMatchObject({ accepted: true });
-    await expect(client.simulateRefund({ invoice, amountMinor: 100, strategy: "proportional" })).resolves.toMatchObject({
+    await expect(
+      client.simulateRefund({ invoice, amountMinor: 100, strategy: "proportional" })
+    ).resolves.toMatchObject({
       creditNote: { amountMinor: 100 }
     });
   });

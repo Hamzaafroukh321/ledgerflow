@@ -184,17 +184,42 @@ describe("api", () => {
       url: "/simulator",
       headers: { accept: "text/html" }
     });
+    const overlappingPlansRoute = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { accept: "text/html" }
+    });
+    const overlappingCustomersRoute = await server.inject({
+      method: "GET",
+      url: "/customers",
+      headers: { accept: "text/html" }
+    });
+    const overlappingSimulationsRoute = await server.inject({
+      method: "GET",
+      url: "/simulations",
+      headers: { accept: "text/html" }
+    });
     const plans = await server.inject({
       method: "GET",
       url: "/plans",
+      headers: { accept: "application/json" }
+    });
+    const simulations = await server.inject({
+      method: "GET",
+      url: "/simulations",
       headers: { accept: "application/json" }
     });
 
     expect(root.statusCode).toBe(200);
     expect(root.body).toContain("LedgerFlow UI");
     expect(clientRoute.statusCode).toBe(200);
+    expect(overlappingPlansRoute.body).toContain("LedgerFlow UI");
+    expect(overlappingCustomersRoute.body).toContain("LedgerFlow UI");
+    expect(overlappingSimulationsRoute.body).toContain("LedgerFlow UI");
     expect(plans.statusCode).toBe(200);
     expect(plans.json<Plan[]>()).toHaveLength(2);
+    expect(simulations.statusCode).toBe(200);
+    expect(simulations.json<unknown[]>()).toEqual([]);
     await server.close();
     rmSync(webRoot, { recursive: true, force: true });
   });

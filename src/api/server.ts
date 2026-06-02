@@ -68,7 +68,8 @@ export function buildServer(
     usage: deps.usage ?? defaults.usage,
     coupons: deps.coupons ?? defaults.coupons,
     customers: deps.customers ?? defaults.customers,
-    simulations: deps.simulations ?? defaults.simulations
+    simulations: deps.simulations ?? defaults.simulations,
+    serveWeb: webRoot !== undefined
   });
   server.get("/openapi.json", async () => server.swagger());
   if (webRoot) {
