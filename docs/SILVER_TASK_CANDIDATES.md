@@ -266,3 +266,42 @@ Wrong fixes that should fail:
 - Persisting customers but leaving subscriptions memory-only.
 - Making the API test pass by constructing custom repositories instead of honoring `LEDGERFLOW_DB`.
 - Requiring plans or customers to exist before saving subscriptions, which would change the existing repository contract.
+
+## Candidate: Saved Simulation Runs Survive Restarts
+
+Area:
+Simulation history domain model, API routes, repository contracts, memory and SQLite storage.
+
+Base commit:
+`98b4005`
+
+Fix commit:
+`d2f78a5`
+
+Bug or feature gap:
+The simulator returned invoices only as transient responses. Operators could not save a simulation run, inspect prior generated invoices, or persist run history in SQLite-backed deployments.
+
+Expected behavior:
+The API can create, list, and fetch saved simulation runs containing the validated billing context and generated invoice, with SQLite persistence and newest-first history ordering.
+
+Tests:
+
+- `storage > memory repositories satisfy the contract`
+- `storage > provides typed sqlite repository adapters`
+- `storage > persists simulation runs across sqlite repository instances`
+- `api > creates, lists, and retrieves saved simulation runs`
+
+Why this is a good Silver task:
+It adds a meaningful product workflow while crossing engine validation, API contracts, repository abstractions, persistence migrations, exports, and tests.
+
+Why it is not too easy:
+Saving only the request body is insufficient; the run needs the generated invoice, stable retrieval, deterministic ordering, and matching memory/SQLite behavior.
+
+Why it is not impossible:
+Existing usage and customer repositories provide implementation patterns, and the invoice simulator already supplies the core calculation.
+
+Wrong fixes that should fail:
+
+- Storing only invoice totals instead of the full invoice and original context.
+- Returning saved runs from memory while SQLite deployments lose them after restart.
+- Accepting arbitrary unvalidated contexts when creating saved runs.
