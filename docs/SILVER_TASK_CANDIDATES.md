@@ -305,3 +305,40 @@ Wrong fixes that should fail:
 - Storing only invoice totals instead of the full invoice and original context.
 - Returning saved runs from memory while SQLite deployments lose them after restart.
 - Accepting arbitrary unvalidated contexts when creating saved runs.
+
+## Candidate: HTML SPA Routes Must Not Return API JSON
+
+Area:
+Fastify static hosting, overlapping GET API routes, React router deep links, saved simulations page.
+
+Base commit:
+`85b4878`
+
+Fix commit:
+`522a559`
+
+Bug or feature gap:
+Direct browser requests to frontend paths that overlap GET API routes, such as `/plans`, `/customers`, and `/simulations`, returned API JSON instead of the React app when static hosting was enabled.
+
+Expected behavior:
+When static web serving is enabled and the request accepts HTML, overlapping frontend routes serve `index.html`. API clients that request JSON continue receiving normal API responses.
+
+Tests:
+
+- `api > serves the web app and keeps API routes available when static hosting is enabled`
+- Playwright production-page smoke check for `/simulations`
+
+Why this is a good Silver task:
+It requires understanding Fastify route precedence, browser Accept headers, SPA deep links, and preserving API behavior for JSON clients.
+
+Why it is not too easy:
+Serving the SPA for every overlapping route can break API consumers, while leaving route precedence alone breaks refresh/deep-link behavior in production.
+
+Why it is not impossible:
+The failure is visible from a direct browser load and can be captured with a small route-level regression test.
+
+Wrong fixes that should fail:
+
+- Moving API routes behind a new prefix without updating every client.
+- Returning `index.html` for JSON API requests.
+- Only fixing `/simulations` while leaving existing `/plans` and `/customers` deep links broken.
