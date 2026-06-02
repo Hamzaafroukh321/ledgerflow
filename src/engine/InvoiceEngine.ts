@@ -8,19 +8,23 @@ import type { Invoice, LineItem } from "../invoice/types.js";
 import type { Plan } from "../plans/types.js";
 import { priceComponent } from "../plans/pricing.js";
 import { prorate } from "../proration/prorate.js";
+import type { CouponRepository, PlanRepository } from "../storage/repository.js";
 import { computeTax } from "../tax/engine.js";
 import type { TaxProfile } from "../tax/types.js";
 import { parseBillingContext, type BillingContext } from "./context.js";
 
+type PlanSource = Record<string, Plan> | PlanRepository;
+type CouponSource = Record<string, Coupon> | CouponRepository;
+
 export class InvoiceEngine {
   public constructor(
-    private readonly plans: Record<string, Plan> = DEFAULT_PLANS,
-    private readonly coupons: Record<string, Coupon> = DEFAULT_COUPONS
+    private readonly plans: PlanSource = DEFAULT_PLANS,
+    private readonly coupons: CouponSource = DEFAULT_COUPONS
   ) {}
 
   public simulate(input: unknown): Invoice {
     const context = parseBillingContext(input);
-    const plan = this.plans[context.subscription.planId];
+    const plan = this.getPlan(context.subscription.planId);
     if (!plan) {
       throw new Error(`Plan not found: ${context.subscription.planId}`);
     }
@@ -31,7 +35,10 @@ export class InvoiceEngine {
     const discountResult = applyDiscounts(lineItems, discountCoupons);
 
     const subtotal = lineItems.reduce((sum, item) => sum + item.amountMinor, 0);
-    const discountTotal = discountResult.discounts.reduce((sum, discount) => sum + discount.amountMinor, 0);
+    const discountTotal = discountResult.discounts.reduce(
+      (sum, discount) => sum + discount.amountMinor,
+      0
+    );
     const preTax = applyCredits(Math.max(0, subtotal + discountTotal), context.credits, "pre_tax");
     const taxableSubtotal = Math.max(0, subtotal + discountTotal + sumApplied(preTax.applied));
     const taxLines = computeTax(
@@ -46,8 +53,15 @@ export class InvoiceEngine {
       normalizeTaxProfile(context.customer.taxProfile)
     ).taxLines;
     const tax = taxLines.reduce((sum, line) => sum + line.amountMinor, 0);
-    const chargeableTax = taxLines.reduce((sum, line) => sum + (line.inclusive ? 0 : line.amountMinor), 0);
-    const postTax = applyCredits(taxableSubtotal + chargeableTax, preTax.remainingCredits, "post_tax");
+    const chargeableTax = taxLines.reduce(
+      (sum, line) => sum + (line.inclusive ? 0 : line.amountMinor),
+      0
+    );
+    const postTax = applyCredits(
+      taxableSubtotal + chargeableTax,
+      preTax.remainingCredits,
+      "post_tax"
+    );
     const creditTotal = sumApplied(preTax.applied) + sumApplied(postTax.applied);
     const total = Math.max(0, subtotal + discountTotal + creditTotal + chargeableTax);
 
@@ -132,12 +146,28 @@ export class InvoiceEngine {
   }
 
   private requireCoupon(code: string): Coupon {
-    const coupon = this.coupons[code];
+    const coupon = this.getCoupon(code);
     if (!coupon) {
       throw new Error(`Coupon not found: ${code}`);
     }
     return coupon;
   }
+
+  private getPlan(planId: string): Plan | undefined {
+    return isPlanRepository(this.plans) ? this.plans.get(planId) : this.plans[planId];
+  }
+
+  private getCoupon(code: string): Coupon | undefined {
+    return isCouponRepository(this.coupons) ? this.coupons.get(code) : this.coupons[code];
+  }
+}
+
+function isPlanRepository(source: PlanSource): source is PlanRepository {
+  return typeof (source as PlanRepository).get === "function";
+}
+
+function isCouponRepository(source: CouponSource): source is CouponRepository {
+  return typeof (source as CouponRepository).get === "function";
 }
 
 function sumApplied(credits: { amountMinor: number }[]): number {

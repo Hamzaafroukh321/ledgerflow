@@ -10,7 +10,7 @@ import swaggerUi from "@fastify/swagger-ui";
 import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
 import { MemoryCustomerRepository } from "../customers/repository.js";
 import type { CustomerRepository } from "../customers/repository.js";
-import { defaultInvoiceEngine, type InvoiceEngine } from "../engine/InvoiceEngine.js";
+import { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import { registerErrorHandler } from "../errors/handler.js";
 import {
   MemoryCouponRepository,
@@ -119,7 +119,7 @@ export function createDefaultServerDeps(
     seedDefaultPlans(plans);
     seedDefaultCoupons(coupons);
     return {
-      engine: defaultInvoiceEngine,
+      engine: new InvoiceEngine(plans, coupons),
       plans,
       usage,
       coupons,
@@ -135,7 +135,7 @@ export function createDefaultServerDeps(
   seedDefaultPlans(plans);
   seedDefaultCoupons(coupons);
   return {
-    engine: defaultInvoiceEngine,
+    engine: new InvoiceEngine(plans, coupons),
     plans,
     usage,
     coupons,

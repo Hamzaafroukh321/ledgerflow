@@ -36,6 +36,32 @@ describe("api client", () => {
     );
   });
 
+  it("creates catalog plans with JSON bodies", async () => {
+    const plan = {
+      id: "growth_monthly",
+      name: "Growth Monthly",
+      type: "per_seat",
+      currency: "USD",
+      components: [
+        {
+          id: "seat",
+          name: "Seat",
+          type: "per_seat",
+          currency: "USD",
+          unitAmountMinor: 4900
+        }
+      ]
+    };
+    const fetchImpl = vi.fn(async () => response(plan));
+    const client = createApiClient({ baseUrl: "/api", fetchImpl });
+
+    await expect(client.createPlan(plan)).resolves.toEqual(plan);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/plans$/),
+      expect.objectContaining({ method: "POST", body: expect.stringContaining("growth_monthly") })
+    );
+  });
+
   it("turns error envelopes into typed ApiError instances", async () => {
     const fetchImpl = vi.fn(async () =>
       response({ error: { code: "not_found", message: "Missing plan" } }, { status: 404 })

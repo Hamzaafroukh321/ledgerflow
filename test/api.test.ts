@@ -240,6 +240,44 @@ describe("api", () => {
     await server.close();
   });
 
+  it("creates custom catalog plans and uses them for simulation", async () => {
+    const server = buildServer();
+    const customPlan: Plan = {
+      id: "enterprise_annual",
+      name: "Enterprise Annual",
+      type: "per_seat",
+      currency: "USD",
+      components: [
+        {
+          id: "seat",
+          name: "Seat",
+          type: "per_seat",
+          currency: "USD",
+          unitAmountMinor: 120000
+        }
+      ]
+    };
+
+    const created = await server.inject({ method: "POST", url: "/plans", payload: customPlan });
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toEqual(customPlan);
+
+    const plans = (await server.inject({ method: "GET", url: "/plans" })).json<Plan[]>();
+    expect(plans.map((plan) => plan.id)).toContain("enterprise_annual");
+
+    const simulated = await server.inject({
+      method: "POST",
+      url: "/invoices/simulate",
+      payload: {
+        ...context,
+        subscription: { planId: "enterprise_annual", seats: 2, changedOn: null }
+      }
+    });
+    expect(simulated.statusCode).toBe(200);
+    expect(simulated.json<Invoice>().totals.subtotal).toBe(240000);
+    await server.close();
+  });
+
   it("returns validation 400", async () => {
     const server = buildServer();
     const response = await server.inject({ method: "POST", url: "/usage/events", payload: {} });

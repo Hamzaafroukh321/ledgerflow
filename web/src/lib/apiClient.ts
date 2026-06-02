@@ -8,6 +8,7 @@ import {
   customerSchema,
   customersSchema,
   invoiceSchema,
+  planSchema,
   plansSchema,
   refundResultSchema,
   scenarioComparisonSchema,
@@ -68,6 +69,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
   return {
     listPlans: () => request("/plans", plansSchema),
+    createPlan: (input: unknown) =>
+      request("/plans", planSchema, body("POST", planSchema.parse(input))),
     simulateInvoice: (context: BillingContext) =>
       request(
         "/invoices/simulate",

@@ -14,14 +14,18 @@ export const handlers = [
         name: "Starter Monthly",
         type: "flat",
         currency: "USD",
-        components: [{ id: "base", name: "Base", type: "flat" }]
+        components: [
+          { id: "base", name: "Base", type: "flat", currency: "USD", unitAmountMinor: 2900 }
+        ]
       },
       {
         id: "pro_monthly",
         name: "Pro Monthly",
         type: "per_seat",
         currency: "USD",
-        components: [{ id: "seat", name: "Seat", type: "per_seat" }]
+        components: [
+          { id: "seat", name: "Seat", type: "per_seat", currency: "USD", unitAmountMinor: 1999 }
+        ]
       }
     ]);
   })

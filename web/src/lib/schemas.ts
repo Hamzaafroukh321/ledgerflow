@@ -99,12 +99,37 @@ export const billingContextSchema = z.object({
   )
 });
 
+export const planTypeSchema = z.enum([
+  "flat",
+  "per_seat",
+  "tiered",
+  "volume",
+  "graduated",
+  "usage"
+]);
+
+export const tierSchema = z.object({
+  upTo: z.union([z.number().int().positive(), z.literal("infinity")]),
+  unitAmountMinor: z.number().int().nonnegative()
+});
+
+export const priceComponentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: planTypeSchema,
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  unitAmountMinor: z.number().int().nonnegative().optional(),
+  tiers: z.array(tierSchema).optional(),
+  meter: z.string().optional(),
+  includedQuantity: z.number().int().nonnegative().optional()
+});
+
 export const planSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: planTypeSchema,
   currency: z.string(),
-  components: z.array(z.record(z.unknown()))
+  components: z.array(priceComponentSchema)
 });
 
 export const plansSchema = z.array(planSchema);

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { allocateRefund } from "../refunds/allocate-refund.js";
+import type { Plan } from "../plans/types.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
 import { UsageEventSchema } from "./schemas.js";
 import type { InvoiceEngine } from "../engine/InvoiceEngine.js";
@@ -94,6 +95,32 @@ const usageAggregateSchema = z.object({
   })
 });
 
+const planTypeSchema = z.enum(["flat", "per_seat", "tiered", "volume", "graduated", "usage"]);
+
+const tierSchema = z.object({
+  upTo: z.union([z.number().int().positive(), z.literal("infinity")]),
+  unitAmountMinor: z.number().int().nonnegative()
+});
+
+const priceComponentSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: planTypeSchema,
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  unitAmountMinor: z.number().int().nonnegative().optional(),
+  tiers: z.array(tierSchema).optional(),
+  meter: z.string().optional(),
+  includedQuantity: z.number().int().nonnegative().optional()
+});
+
+const planSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: planTypeSchema,
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  components: z.array(priceComponentSchema).min(1)
+});
+
 const customerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -134,6 +161,12 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       return reply;
     }
     return deps.plans.list();
+  });
+
+  server.post("/plans", async (request) => {
+    const plan = planSchema.parse(request.body) as Plan;
+    deps.plans.save(plan);
+    return plan;
   });
 
   server.post("/invoices/simulate", async (request) => deps.engine.simulate(request.body));
