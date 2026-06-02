@@ -342,3 +342,42 @@ Wrong fixes that should fail:
 - Moving API routes behind a new prefix without updating every client.
 - Returning `index.html` for JSON API requests.
 - Only fixing `/simulations` while leaving existing `/plans` and `/customers` deep links broken.
+
+## Candidate: Custom Plans Must Be Billable Immediately
+
+Area:
+Plan catalog API, repository-backed invoice engine, Plans page editor, frontend schemas.
+
+Base commit:
+`b51ee51`
+
+Fix commit:
+`33faa65`
+
+Bug or feature gap:
+The codebase had repository `save(plan)` support, but no API or UI to create custom plans. When a plan was added through storage, the invoice engine still used static default plan records, so newly saved plans could not be simulated.
+
+Expected behavior:
+Operators can create or update a plan from the API or Plans page, see it in the catalog, and immediately simulate invoices against that plan. SQLite-backed deployments persist custom catalog changes.
+
+Tests:
+
+- `api > creates custom catalog plans and uses them for simulation`
+- `PlansPage > creates a plan and refetches the catalog`
+- `api client > creates catalog plans with JSON bodies`
+- Playwright production-page smoke check for saving a plan on `/plans`
+
+Why this is a good Silver task:
+It crosses API validation, repository-backed billing logic, frontend schemas, React Query cache invalidation, and production UI behavior.
+
+Why it is not too easy:
+Adding `POST /plans` alone is insufficient if the invoice engine keeps reading static defaults and cannot bill the new catalog entry.
+
+Why it is not impossible:
+The repository save contract already exists and the Plans page has a focused catalog surface.
+
+Wrong fixes that should fail:
+
+- Saving the plan but leaving simulation on static `DEFAULT_PLANS`.
+- Loosening frontend schemas to accept arbitrary component objects.
+- Refetching the catalog only in tests while the real UI remains stale after save.
