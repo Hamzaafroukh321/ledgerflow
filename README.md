@@ -18,6 +18,13 @@ npm test
 npm run build
 ```
 
+On Windows, the full local verifier is:
+
+```powershell
+.\scripts\verify.ps1
+.\scripts\count_tests.ps1
+```
+
 The browser console lives in `web/`:
 
 ```sh
