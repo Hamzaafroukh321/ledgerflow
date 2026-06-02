@@ -228,3 +228,41 @@ Wrong fixes that should fail:
 
 - Sending zero credits and loosening backend validation.
 - Dropping non-zero credit values.
+
+## Candidate: SQLite Persists Customer Billing Profiles
+
+Area:
+SQLite storage, customer repository, Fastify default dependency wiring, API restart behavior.
+
+Base commit:
+`bb3059c`
+
+Fix commit:
+`147c88a`
+
+Bug or feature gap:
+When `LEDGERFLOW_DB` was configured, plans, coupons, and usage events used SQLite, but customers and subscription assignments stayed in memory. Customer profiles disappeared after an API restart even though the app was in persistent mode.
+
+Expected behavior:
+SQLite-backed deployments persist customers and subscription assignments, and `buildServer({}, { LEDGERFLOW_DB })` uses the passed environment consistently for default repositories.
+
+Tests:
+
+- `storage > persists customers and subscriptions across sqlite repository instances`
+- `api > uses sqlite repositories when LEDGERFLOW_DB is configured`
+- `api > persists customer profiles through sqlite-backed API restarts`
+
+Why this is a good Silver task:
+It requires understanding repository contracts, optional JSON fields, SQLite migration shape, API dependency construction, and server shutdown lifecycle.
+
+Why it is not too easy:
+Persisting customers alone is not enough; billing profiles also depend on subscription upsert semantics and the server must release SQLite handles on close.
+
+Why it is not impossible:
+The memory repository defines the target contract and existing SQLite repositories show the migration and adapter pattern.
+
+Wrong fixes that should fail:
+
+- Persisting customers but leaving subscriptions memory-only.
+- Making the API test pass by constructing custom repositories instead of honoring `LEDGERFLOW_DB`.
+- Requiring plans or customers to exist before saving subscriptions, which would change the existing repository contract.
