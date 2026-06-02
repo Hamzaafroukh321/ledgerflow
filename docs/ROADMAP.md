@@ -17,7 +17,7 @@ LedgerFlow should keep growing around deterministic billing operations, not paym
 - Add organization-level configuration for tax rates, default currency, and plan visibility.
 - Add deterministic pagination and sorting on operational API endpoints.
 
-## Silver Task Backlog Themes
+## Quality Backlog Themes
 
 - Cross-module consistency between engine, audit, API schemas, and frontend rendering.
 - Idempotency and conflict handling in usage ingestion.

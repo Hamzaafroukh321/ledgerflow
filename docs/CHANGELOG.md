@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Added PowerShell verification and test counting helpers for local Windows development.
-- Documented operations, roadmap, and Silver task authoring candidates.
+- Documented operations, roadmap, and quality backlog.
 
 ## 0.1.0
 
