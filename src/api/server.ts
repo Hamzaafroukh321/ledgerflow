@@ -12,10 +12,15 @@ import { MemoryCustomerRepository } from "../customers/repository.js";
 import type { CustomerRepository } from "../customers/repository.js";
 import { defaultInvoiceEngine, type InvoiceEngine } from "../engine/InvoiceEngine.js";
 import { registerErrorHandler } from "../errors/handler.js";
-import { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "../storage/memory.js";
+import {
+  MemoryCouponRepository,
+  MemoryPlanRepository,
+  MemoryUsageRepository
+} from "../storage/memory.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
 import {
   SqliteCouponRepository,
+  SqliteCustomerRepository,
   SqlitePlanRepository,
   SqliteUsageRepository
 } from "../storage/sqlite.js";
@@ -33,9 +38,10 @@ export function buildServer(
   deps: ServerDeps = {},
   env: Record<string, string | undefined> = process.env
 ): FastifyInstance {
-  const defaults = createDefaultServerDeps();
+  const defaults = createDefaultServerDeps(env);
   const server = Fastify({ logger: false });
   const webRoot = resolveWebRoot(env);
+  server.addHook("onClose", async () => closeServerDeps(defaults));
   void server.register(cors, { origin: true });
   void server.register(swagger, {
     openapi: {
@@ -77,6 +83,14 @@ function resolveWebRoot(env: Record<string, string | undefined>): string | undef
   return existsSync(join(root, "index.html")) ? root : undefined;
 }
 
+function closeServerDeps(deps: Required<ServerDeps>): void {
+  for (const repository of [deps.plans, deps.usage, deps.coupons, deps.customers]) {
+    if ("close" in repository && typeof repository.close === "function") {
+      repository.close();
+    }
+  }
+}
+
 export function createDefaultServerDeps(
   env: Record<string, string | undefined> = process.env
 ): Required<ServerDeps> {
@@ -92,7 +106,7 @@ export function createDefaultServerDeps(
       plans,
       usage,
       coupons,
-      customers: new MemoryCustomerRepository()
+      customers: new SqliteCustomerRepository(dbPath)
     };
   }
 

@@ -1,13 +1,20 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  createCustomer,
   MemoryCouponRepository,
   MemoryPlanRepository,
   MemoryUsageRepository,
   SqliteCouponRepository,
+  SqliteCustomerRepository,
   SqlitePlanRepository,
   SqliteStore,
   SqliteUsageRepository,
+  assignSubscription,
   type Plan
 } from "../src/index.js";
 
@@ -136,5 +143,49 @@ describe("storage", () => {
     plans.close();
     coupons.close();
     usage.close();
+  });
+
+  it("persists customers and subscriptions across sqlite repository instances", () => {
+    const directory = mkdtempSync(join(tmpdir(), "ledgerflow-customers-"));
+    const dbPath = join(directory, "ledgerflow.sqlite");
+    const first = new SqliteCustomerRepository(dbPath);
+    const customer = createCustomer({
+      id: "cus_sqlite",
+      name: "SQLite Customer",
+      email: "billing@example.com",
+      taxProfile: {
+        exempt: false,
+        jurisdiction: "US-CA",
+        reverseCharge: true,
+        rates: { state: 0.0825 }
+      },
+      metadata: { segment: "enterprise" }
+    });
+    const active = assignSubscription({
+      customerId: "cus_sqlite",
+      planId: "pro_monthly",
+      seats: 7,
+      startsOn: "2025-01-01"
+    });
+    const replaced = assignSubscription({
+      customerId: "cus_sqlite",
+      planId: "pro_monthly",
+      seats: 9,
+      startsOn: "2025-01-01",
+      endsOn: "2025-06-01"
+    });
+
+    first.saveCustomer(customer);
+    first.saveSubscription(active);
+    first.saveSubscription(replaced);
+    first.close();
+
+    const second = new SqliteCustomerRepository(dbPath);
+    expect(second.getCustomer("cus_sqlite")).toEqual(customer);
+    expect(second.listCustomers()).toEqual([customer]);
+    expect(second.listSubscriptions("cus_sqlite")).toEqual([replaced]);
+    expect(second.listSubscriptions()).toEqual([replaced]);
+    second.close();
+    rmSync(directory, { recursive: true, force: true });
   });
 });

@@ -12,6 +12,7 @@ import {
   MemoryPlanRepository,
   MemoryUsageRepository,
   SqliteCouponRepository,
+  SqliteCustomerRepository,
   SqlitePlanRepository,
   SqliteUsageRepository,
   type BillingContext,
@@ -44,7 +45,9 @@ describe("api", () => {
     coupons.save({ code: "SAVE", kind: "percent", value: 10, stackable: true });
     const server = buildServer({ plans, coupons });
 
-    expect((await server.inject({ method: "GET", url: "/health" })).json()).toEqual({ status: "ok" });
+    expect((await server.inject({ method: "GET", url: "/health" })).json()).toEqual({
+      status: "ok"
+    });
     expect((await server.inject({ method: "GET", url: "/plans" })).json()).toEqual([plan]);
 
     const invoiceResponse = await server.inject({
@@ -115,10 +118,12 @@ describe("api", () => {
       timestamp: "2025-01-01T00:00:00Z"
     };
     expect(
-      (await server.inject({ method: "POST", url: "/usage/events", payload: usagePayload })).statusCode
+      (await server.inject({ method: "POST", url: "/usage/events", payload: usagePayload }))
+        .statusCode
     ).toBe(200);
     expect(
-      (await server.inject({ method: "POST", url: "/usage/events", payload: usagePayload })).statusCode
+      (await server.inject({ method: "POST", url: "/usage/events", payload: usagePayload }))
+        .statusCode
     ).toBe(409);
     const conflictingUsage = await server.inject({
       method: "POST",
@@ -156,7 +161,11 @@ describe("api", () => {
   it("does not serve the web app unless static hosting is enabled", async () => {
     const server = buildServer();
 
-    const response = await server.inject({ method: "GET", url: "/", headers: { accept: "text/html" } });
+    const response = await server.inject({
+      method: "GET",
+      url: "/",
+      headers: { accept: "text/html" }
+    });
 
     expect(response.statusCode).toBe(404);
     await server.close();
@@ -168,8 +177,16 @@ describe("api", () => {
     const server = buildServer({}, { LEDGERFLOW_SERVE_WEB: "1", LEDGERFLOW_WEB_ROOT: webRoot });
 
     const root = await server.inject({ method: "GET", url: "/", headers: { accept: "text/html" } });
-    const clientRoute = await server.inject({ method: "GET", url: "/simulator", headers: { accept: "text/html" } });
-    const plans = await server.inject({ method: "GET", url: "/plans", headers: { accept: "application/json" } });
+    const clientRoute = await server.inject({
+      method: "GET",
+      url: "/simulator",
+      headers: { accept: "text/html" }
+    });
+    const plans = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { accept: "application/json" }
+    });
 
     expect(root.statusCode).toBe(200);
     expect(root.body).toContain("LedgerFlow UI");
@@ -304,7 +321,13 @@ describe("api", () => {
     expect(deps.plans).toBeInstanceOf(SqlitePlanRepository);
     expect(deps.usage).toBeInstanceOf(SqliteUsageRepository);
     expect(deps.coupons).toBeInstanceOf(SqliteCouponRepository);
-    expect(deps.plans.list().map((plan) => plan.id).sort()).toEqual(["pro_monthly", "starter_monthly"]);
+    expect(deps.customers).toBeInstanceOf(SqliteCustomerRepository);
+    expect(
+      deps.plans
+        .list()
+        .map((plan) => plan.id)
+        .sort()
+    ).toEqual(["pro_monthly", "starter_monthly"]);
     expect(deps.coupons.get("SAVE20")).toMatchObject({ code: "SAVE20", value: 20 });
     if (deps.plans instanceof SqlitePlanRepository) {
       deps.plans.close();
@@ -315,6 +338,64 @@ describe("api", () => {
     if (deps.coupons instanceof SqliteCouponRepository) {
       deps.coupons.close();
     }
+    if (deps.customers instanceof SqliteCustomerRepository) {
+      deps.customers.close();
+    }
+  });
+
+  it("persists customer profiles through sqlite-backed API restarts", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "ledgerflow-api-db-"));
+    const dbPath = join(directory, "ledgerflow.sqlite");
+    const first = buildServer({}, { LEDGERFLOW_DB: dbPath });
+
+    const customer = await first.inject({
+      method: "POST",
+      url: "/customers",
+      payload: {
+        id: "cus_persisted",
+        name: "Persisted Customer",
+        email: "billing@example.com",
+        taxProfile: { exempt: false, jurisdiction: "US-NY", rates: { city: 0.04 } },
+        metadata: { source: "api" }
+      }
+    });
+    expect(customer.statusCode).toBe(200);
+    const subscription = await first.inject({
+      method: "POST",
+      url: "/subscriptions",
+      payload: {
+        customerId: "cus_persisted",
+        planId: "starter_monthly",
+        seats: 3,
+        startsOn: "2025-01-01"
+      }
+    });
+    expect(subscription.statusCode).toBe(200);
+    await first.close();
+
+    const second = buildServer({}, { LEDGERFLOW_DB: dbPath });
+    const customers = await second.inject({ method: "GET", url: "/customers" });
+    expect(customers.statusCode).toBe(200);
+    expect(customers.json()).toEqual([
+      {
+        id: "cus_persisted",
+        name: "Persisted Customer",
+        email: "billing@example.com",
+        taxProfile: { exempt: false, jurisdiction: "US-NY", rates: { city: 0.04 } },
+        metadata: { source: "api" }
+      }
+    ]);
+    const profile = await second.inject({
+      method: "GET",
+      url: "/customers/cus_persisted/billing-profile?onDate=2025-02-01"
+    });
+    expect(profile.statusCode).toBe(200);
+    expect(profile.json().activeSubscription).toMatchObject({
+      planId: "starter_monthly",
+      seats: 3
+    });
+    await second.close();
+    rmSync(directory, { recursive: true, force: true });
   });
 
   it("uses memory repositories by default", () => {

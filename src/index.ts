@@ -33,9 +33,14 @@ export type { BillingContext } from "./engine/context.js";
 export type { PipelineStage } from "./engine/pipeline.js";
 export { allocateRefund } from "./refunds/allocate-refund.js";
 export type { CreditNote, RefundAllocation, RefundStrategy, RefundTrace } from "./refunds/types.js";
-export { MemoryCouponRepository, MemoryPlanRepository, MemoryUsageRepository } from "./storage/memory.js";
+export {
+  MemoryCouponRepository,
+  MemoryPlanRepository,
+  MemoryUsageRepository
+} from "./storage/memory.js";
 export {
   SqliteCouponRepository,
+  SqliteCustomerRepository,
   SqlitePlanRepository,
   SqliteStore,
   SqliteUsageRepository
@@ -52,11 +57,7 @@ export {
   seedDefaultPlans
 } from "./catalog/defaults.js";
 export { auditInvoice } from "./audit/invoice-auditor.js";
-export {
-  assignSubscription,
-  createCustomer,
-  resolveBillingProfile
-} from "./customers/profile.js";
+export { assignSubscription, createCustomer, resolveBillingProfile } from "./customers/profile.js";
 export { MemoryCustomerRepository } from "./customers/repository.js";
 export { compareScenarios } from "./scenarios/compare.js";
 export type { AuditIssue, AuditSeverity, AuditSummary, InvoiceAuditReport } from "./audit/types.js";

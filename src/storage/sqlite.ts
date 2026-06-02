@@ -1,10 +1,12 @@
 import Database from "better-sqlite3";
 
+import type { Customer, SubscriptionAssignment } from "../customers/types.js";
 import type { Coupon } from "../discounts/types.js";
 import type { Plan } from "../plans/types.js";
 import { sameUsageEvent, validateUsageEvent } from "../usage/usage-store.js";
 import type { UsageEvent, UsageIngestResult } from "../usage/types.js";
 import type { CouponRepository, PlanRepository, UsageRepository } from "./repository.js";
+import type { CustomerRepository } from "../customers/repository.js";
 
 export class SqliteStore {
   private readonly db: Database.Database;
@@ -76,7 +78,9 @@ export class SqliteStore {
 
   public listUsageEvents(): UsageEvent[] {
     const rows = this.db
-      .prepare("SELECT idempotency_key, customer_id, meter, quantity, ts FROM usage_events ORDER BY ts")
+      .prepare(
+        "SELECT idempotency_key, customer_id, meter, quantity, ts FROM usage_events ORDER BY ts"
+      )
       .all() as UsageRow[];
     return rows.map((row) => ({
       idempotencyKey: row.idempotency_key,
@@ -85,6 +89,73 @@ export class SqliteStore {
       quantity: row.quantity,
       timestamp: row.ts
     }));
+  }
+
+  public listCustomers(): Customer[] {
+    const rows = this.db
+      .prepare("SELECT id, name, email, tax_profile_json, metadata_json FROM customers ORDER BY id")
+      .all() as CustomerRow[];
+    return rows.map((row) => this.customerFromRow(row));
+  }
+
+  public getCustomer(customerId: string): Customer | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT id, name, email, tax_profile_json, metadata_json FROM customers WHERE id = ?"
+      )
+      .get(customerId) as CustomerRow | undefined;
+    return row ? this.customerFromRow(row) : undefined;
+  }
+
+  public saveCustomer(customer: Customer): void {
+    this.db
+      .prepare(
+        "INSERT OR REPLACE INTO customers (id, name, email, tax_profile_json, metadata_json) VALUES (?, ?, ?, ?, ?)"
+      )
+      .run(
+        customer.id,
+        customer.name,
+        customer.email ?? null,
+        JSON.stringify(customer.taxProfile),
+        JSON.stringify(customer.metadata)
+      );
+  }
+
+  public listSubscriptions(customerId?: string): SubscriptionAssignment[] {
+    const query =
+      customerId === undefined
+        ? "SELECT customer_id, plan_id, seats, starts_on, ends_on FROM subscriptions ORDER BY customer_id, starts_on, plan_id"
+        : "SELECT customer_id, plan_id, seats, starts_on, ends_on FROM subscriptions WHERE customer_id = ? ORDER BY starts_on, plan_id";
+    const rows =
+      customerId === undefined
+        ? (this.db.prepare(query).all() as SubscriptionRow[])
+        : (this.db.prepare(query).all(customerId) as SubscriptionRow[]);
+    return rows.map((row) => {
+      const assignment: SubscriptionAssignment = {
+        customerId: row.customer_id,
+        planId: row.plan_id,
+        seats: row.seats,
+        startsOn: row.starts_on
+      };
+      if (row.ends_on !== null) {
+        assignment.endsOn = row.ends_on;
+      }
+      return assignment;
+    });
+  }
+
+  public saveSubscription(assignment: SubscriptionAssignment): void {
+    this.db
+      .prepare(
+        "INSERT OR REPLACE INTO subscriptions (customer_id, plan_id, starts_on, seats, ends_on) VALUES (?, ?, ?, ?, ?)"
+      )
+      .run(
+        assignment.customerId,
+        assignment.planId,
+        assignment.startsOn,
+        assignment.seats,
+        assignment.endsOn ?? null
+      );
   }
 
   private getUsageEvent(idempotencyKey: string): UsageEvent | undefined {
@@ -103,6 +174,19 @@ export class SqliteStore {
       quantity: row.quantity,
       timestamp: row.ts
     };
+  }
+
+  private customerFromRow(row: CustomerRow): Customer {
+    const customer: Customer = {
+      id: row.id,
+      name: row.name,
+      taxProfile: JSON.parse(row.tax_profile_json) as Customer["taxProfile"],
+      metadata: JSON.parse(row.metadata_json) as Customer["metadata"]
+    };
+    if (row.email !== null) {
+      customer.email = row.email;
+    }
+    return customer;
   }
 
   private getPlan(planId: string): Plan | undefined {
@@ -199,6 +283,21 @@ export class SqliteStore {
         quantity INTEGER NOT NULL,
         ts TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS customers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT,
+        tax_profile_json TEXT NOT NULL,
+        metadata_json TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        customer_id TEXT NOT NULL,
+        plan_id TEXT NOT NULL,
+        starts_on TEXT NOT NULL,
+        seats INTEGER NOT NULL,
+        ends_on TEXT,
+        PRIMARY KEY (customer_id, plan_id, starts_on)
+      );
     `);
   }
 }
@@ -273,6 +372,38 @@ export class SqliteUsageRepository implements UsageRepository {
   }
 }
 
+export class SqliteCustomerRepository implements CustomerRepository {
+  private readonly store: SqliteStore;
+
+  public constructor(path = ":memory:") {
+    this.store = new SqliteStore(path);
+  }
+
+  public listCustomers(): Customer[] {
+    return this.store.listCustomers();
+  }
+
+  public getCustomer(customerId: string): Customer | undefined {
+    return this.store.getCustomer(customerId);
+  }
+
+  public saveCustomer(customer: Customer): void {
+    this.store.saveCustomer(customer);
+  }
+
+  public listSubscriptions(customerId?: string): SubscriptionAssignment[] {
+    return this.store.listSubscriptions(customerId);
+  }
+
+  public saveSubscription(assignment: SubscriptionAssignment): void {
+    this.store.saveSubscription(assignment);
+  }
+
+  public close(): void {
+    this.store.close();
+  }
+}
+
 interface PlanRow {
   id: string;
   name: string;
@@ -297,4 +428,20 @@ interface UsageRow {
   meter: string;
   quantity: number;
   ts: string;
+}
+
+interface CustomerRow {
+  id: string;
+  name: string;
+  email: string | null;
+  tax_profile_json: string;
+  metadata_json: string;
+}
+
+interface SubscriptionRow {
+  customer_id: string;
+  plan_id: string;
+  seats: number;
+  starts_on: string;
+  ends_on: string | null;
 }
