@@ -23,6 +23,7 @@ import type {
   UsageRepository
 } from "../storage/repository.js";
 import { registerTokenAuth } from "./auth.js";
+import { registerRbac } from "./rbac.js";
 import { registerRoutes } from "./routes.js";
 
 const rateLimitPlugin = rateLimit as unknown as FastifyPluginCallback<RateLimitPluginOptions>;
@@ -78,6 +79,7 @@ export function buildServer(
       serveWeb,
       warnOpenMode: (message) => server.log.warn(message)
     });
+    registerRbac(server);
     registerRoutes(server, {
       engine,
       repository,

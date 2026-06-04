@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 export interface Principal {
   subject: string;
   tenantId: string;
-  role: "admin";
+  role: "viewer" | "editor" | "admin";
 }
 
 export interface TokenAuthOptions {
@@ -64,13 +64,16 @@ function parseTokenMap(value: string | undefined): TokenPrincipal[] {
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => {
-      const [token, tenantId, subject = "api-token"] = entry.split(":");
+      const [token, tenantId, subject = "api-token", role = "admin"] = entry.split(":");
       if (!token?.trim() || !tenantId?.trim()) {
-        throw new Error("LEDGERFLOW_API_TOKENS entries must use token:tenantId[:subject]");
+        throw new Error("LEDGERFLOW_API_TOKENS entries must use token:tenantId[:subject[:role]]");
+      }
+      if (role !== "viewer" && role !== "editor" && role !== "admin") {
+        throw new Error("LEDGERFLOW_API_TOKENS role must be viewer, editor, or admin");
       }
       return {
         token: token.trim(),
-        principal: { subject: subject.trim(), tenantId: tenantId.trim(), role: "admin" }
+        principal: { subject: subject.trim(), tenantId: tenantId.trim(), role }
       };
     });
 }

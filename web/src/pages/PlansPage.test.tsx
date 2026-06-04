@@ -17,6 +17,7 @@ function renderPlans() {
 describe("PlansPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("renders plans from the API", async () => {
@@ -123,6 +124,19 @@ describe("PlansPage", () => {
     renderPlans();
 
     expect(await screen.findByText(/no plans are available/i)).toBeInTheDocument();
+  });
+
+  it("hides write controls for viewer role", async () => {
+    vi.stubEnv("VITE_LEDGERFLOW_ROLE", "viewer");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify([])))
+    );
+    renderPlans();
+
+    expect(await screen.findByText(/no plans are available/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /save plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/plan json/i)).not.toBeInTheDocument();
   });
 
   it("renders typed API errors", async () => {

@@ -635,4 +635,91 @@ describe("api", () => {
 
     await server.close();
   });
+
+  it("enforces viewer, editor, and admin route permissions", async () => {
+    const server = buildServer(
+      {},
+      {
+        LEDGERFLOW_API_TOKENS:
+          "viewer-token:tenant-rbac:viewer-user:viewer,editor-token:tenant-rbac:editor-user:editor,admin-token:tenant-rbac:admin-user:admin"
+      }
+    );
+    const viewer = { authorization: "Bearer viewer-token" };
+    const editor = { authorization: "Bearer editor-token" };
+    const admin = { authorization: "Bearer admin-token" };
+    const plan: Plan = {
+      id: "rbac_plan",
+      name: "RBAC Plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 1000
+        }
+      ]
+    };
+
+    expect((await server.inject({ method: "GET", url: "/plans", headers: viewer })).statusCode).toBe(200);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/invoices/simulate",
+          headers: viewer,
+          payload: context
+        })
+      ).statusCode
+    ).toBe(200);
+
+    const deniedPlan = await server.inject({
+      method: "POST",
+      url: "/plans",
+      headers: viewer,
+      payload: plan
+    });
+    expect(deniedPlan.statusCode).toBe(403);
+    expect(deniedPlan.json()).toEqual({
+      error: {
+        code: "forbidden",
+        message: "This action requires write permission."
+      }
+    });
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/simulations",
+          headers: viewer,
+          payload: { id: "viewer_denied", context }
+        })
+      ).statusCode
+    ).toBe(403);
+
+    expect(
+      (await server.inject({ method: "POST", url: "/plans", headers: editor, payload: plan }))
+        .statusCode
+    ).toBe(200);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/usage/events",
+          headers: admin,
+          payload: {
+            idempotencyKey: "rbac_evt",
+            customerId: "cus_rbac",
+            meter: "api_calls",
+            quantity: 1,
+            timestamp: "2026-01-01T00:00:00.000Z"
+          }
+        })
+      ).statusCode
+    ).toBe(200);
+
+    await server.close();
+  });
 });

@@ -9,7 +9,7 @@ Set these environment variables before hosting:
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
 | `LEDGERFLOW_API_TOKEN` | Production yes | unset | Required bearer token for API calls. When unset, the API starts in open mode and logs a warning. |
-| `LEDGERFLOW_API_TOKENS` | Multi-tenant deployments | unset | Comma-separated `token:tenantId[:subject]` entries. Each token resolves to a tenant-scoped admin principal. |
+| `LEDGERFLOW_API_TOKENS` | Multi-tenant deployments | unset | Comma-separated `token:tenantId[:subject[:role]]` entries. Role is `viewer`, `editor`, or `admin`; omitted role defaults to `admin`. |
 | `LEDGERFLOW_BODY_LIMIT_BYTES` | No | `1048576` | Maximum JSON request body size. |
 | `LEDGERFLOW_RATE_LIMIT_MAX` | No | `300` | Maximum requests per rate-limit window. |
 | `LEDGERFLOW_RATE_LIMIT_WINDOW` | No | `1 minute` | Rate-limit window accepted by `@fastify/rate-limit`. |
@@ -34,7 +34,7 @@ LEDGERFLOW_API_TOKEN=change-me node dist/cli/index.js serve --port 3000
 For multiple tenants, provide one entry per tenant:
 
 ```bash
-LEDGERFLOW_API_TOKENS=token-a:tenant-a:user-a,token-b:tenant-b:user-b node dist/cli/index.js serve --port 3000
+LEDGERFLOW_API_TOKENS=token-a:tenant-a:user-a:viewer,token-b:tenant-b:user-b:editor node dist/cli/index.js serve --port 3000
 ```
 
 Docker Compose requires `LEDGERFLOW_API_TOKEN`:
