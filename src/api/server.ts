@@ -23,6 +23,7 @@ import type {
   UsageRepository
 } from "../storage/repository.js";
 import { registerTokenAuth } from "./auth.js";
+import { MemoryMembershipDirectory, type MembershipDirectory } from "./memberships.js";
 import { registerRbac } from "./rbac.js";
 import { registerRoutes } from "./routes.js";
 
@@ -37,6 +38,7 @@ export interface ServerDeps {
   coupons?: CouponRepository;
   customers?: CustomerRepository;
   simulations?: SimulationRunRepository;
+  memberships?: MembershipDirectory;
 }
 
 export function buildServer(
@@ -83,6 +85,7 @@ export function buildServer(
     registerRoutes(server, {
       engine,
       repository,
+      memberships: deps.memberships ?? defaults.memberships,
       simulateWithEngine,
       serveWeb
     });
@@ -134,7 +137,8 @@ export function createDefaultServerDeps(
       usage: repository.usage as never,
       coupons: repository.coupons as never,
       customers: repository.customers as never,
-      simulations: repository.simulations as never
+      simulations: repository.simulations as never,
+      memberships: new MemoryMembershipDirectory()
     };
   }
 
@@ -150,7 +154,8 @@ export function createDefaultServerDeps(
       usage: repository.usage,
       coupons: repository.coupons,
       customers: repository.customers,
-      simulations: repository.simulations
+      simulations: repository.simulations,
+      memberships: new MemoryMembershipDirectory()
     };
   }
 
@@ -164,7 +169,8 @@ export function createDefaultServerDeps(
     usage: repository.usage,
     coupons: repository.coupons,
     customers: repository.customers,
-    simulations: repository.simulations
+    simulations: repository.simulations,
+    memberships: new MemoryMembershipDirectory()
   };
 }
 

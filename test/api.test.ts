@@ -720,6 +720,34 @@ describe("api", () => {
       ).statusCode
     ).toBe(200);
 
+    expect((await server.inject({ method: "GET", url: "/memberships", headers: viewer })).statusCode).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/memberships",
+          headers: editor,
+          payload: { userId: "member_1", role: "viewer" }
+        })
+      ).statusCode
+    ).toBe(403);
+    const membership = await server.inject({
+      method: "POST",
+      url: "/memberships",
+      headers: admin,
+      payload: { userId: "member_1", role: "viewer", email: "member@example.com" }
+    });
+    expect(membership.statusCode).toBe(200);
+    expect(membership.json()).toEqual({
+      tenantId: "tenant-rbac",
+      userId: "member_1",
+      role: "viewer",
+      email: "member@example.com"
+    });
+    expect(
+      (await server.inject({ method: "GET", url: "/memberships", headers: admin })).json()
+    ).toEqual([membership.json()]);
+
     await server.close();
   });
 });

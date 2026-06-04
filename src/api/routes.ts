@@ -19,12 +19,14 @@ import type { AsyncLedgerRepository, LedgerRepository } from "../data/repository
 import { scopeRepository } from "../data/scoped.js";
 import type { BillingContext } from "../engine/context.js";
 import type { ScenarioComparison, ScenarioInput, ScenarioResult } from "../scenarios/types.js";
+import type { MembershipDirectory } from "./memberships.js";
 
 type RouteRepository = LedgerRepository | AsyncLedgerRepository;
 
 export interface RouteDeps {
   engine: InvoiceEngine;
   repository: RouteRepository;
+  memberships: MembershipDirectory;
   simulateWithEngine?: boolean;
   serveWeb?: boolean;
 }
@@ -152,6 +154,12 @@ const simulationRunSchema = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
   context: z.unknown()
+});
+
+const membershipSchema = z.object({
+  userId: z.string().min(1),
+  role: z.enum(["viewer", "editor", "admin"]),
+  email: z.string().optional()
 });
 
 export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
@@ -333,6 +341,22 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
   server.post("/refunds/simulate", async (request) => {
     const body = refundSchema.parse(request.body);
     return allocateRefund(body.invoice as Invoice, body.amountMinor, body.strategy);
+  });
+
+  server.get("/memberships", async (request) => {
+    const principal = request.principal ?? { tenantId: "default" };
+    return deps.memberships.list(principal.tenantId);
+  });
+
+  server.post("/memberships", async (request) => {
+    const principal = request.principal ?? { tenantId: "default" };
+    const body = membershipSchema.parse(request.body);
+    return deps.memberships.save({
+      tenantId: principal.tenantId,
+      userId: body.userId,
+      role: body.role,
+      ...(body.email ? { email: body.email } : {})
+    });
   });
 }
 

@@ -78,6 +78,14 @@ Creates or replaces a subscription assignment for a customer.
 
 Returns the customer and active subscription assignment for the requested date.
 
+## `GET /memberships`
+
+Admin-only. Returns memberships for the caller's tenant.
+
+## `POST /memberships`
+
+Admin-only. Creates or replaces a tenant membership with `userId`, `role`, and optional `email`.
+
 Validation failures return HTTP 400 with `{ "error": { "code": "validation_error", "message": "...", "details": [] } }`.
 
 ## Docker Compose

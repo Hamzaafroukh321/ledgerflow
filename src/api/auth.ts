@@ -115,7 +115,8 @@ function isApiPath(path: string): boolean {
     || path.startsWith("/customers")
     || path.startsWith("/subscriptions")
     || path.startsWith("/refunds")
-    || path.startsWith("/scenarios");
+    || path.startsWith("/scenarios")
+    || path.startsWith("/memberships");
 }
 
 function acceptsHtml(request: FastifyRequest): boolean {

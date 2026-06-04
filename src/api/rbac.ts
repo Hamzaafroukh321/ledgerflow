@@ -31,7 +31,7 @@ function requiredPermission(request: FastifyRequest): Permission | undefined {
   const path = request.url.split("?")[0] ?? request.url;
 
   if (method === "GET") {
-    return "read";
+    return path === "/memberships" ? "admin" : "read";
   }
 
   if (
@@ -55,6 +55,10 @@ function requiredPermission(request: FastifyRequest): Permission | undefined {
       path === "/simulations")
   ) {
     return "write";
+  }
+
+  if (method === "POST" && path === "/memberships") {
+    return "admin";
   }
 
   return undefined;

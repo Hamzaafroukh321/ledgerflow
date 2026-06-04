@@ -20,3 +20,12 @@ The API returns a stable `403` envelope when a role is not allowed:
 ```
 
 The console reads `VITE_LEDGERFLOW_ROLE`; viewer mode hides write controls such as plan saving.
+
+## Membership Endpoints
+
+Admins can manage tenant-local memberships:
+
+- `GET /memberships`
+- `POST /memberships` with `{ "userId": "member_1", "role": "viewer", "email": "member@example.com" }`
+
+Viewer and editor roles receive `403` for membership routes.
