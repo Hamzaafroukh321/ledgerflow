@@ -47,6 +47,10 @@ export {
   SqliteStore,
   SqliteUsageRepository
 } from "./storage/sqlite.js";
+export { MemoryLedgerRepository } from "./data/memory.js";
+export { PostgresLedgerRepository } from "./data/postgres.js";
+export { SqliteLedgerRepository } from "./data/sqlite.js";
+export type { AsyncLedgerRepository, LedgerRepository } from "./data/repository.js";
 export type {
   CouponRepository,
   PlanRepository,

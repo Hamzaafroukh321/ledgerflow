@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { allocateRefund } from "../refunds/allocate-refund.js";
 import type { Plan } from "../plans/types.js";
-import type { CouponRepository, PlanRepository, UsageRepository } from "../storage/repository.js";
 import { UsageEventSchema } from "./schemas.js";
 import type { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
@@ -11,20 +10,15 @@ import { validateCoupon } from "../discounts/coupon.js";
 import { aggregateUsage } from "../usage/aggregate.js";
 import { auditInvoice } from "../audit/invoice-auditor.js";
 import { assignSubscription, createCustomer, resolveBillingProfile } from "../customers/profile.js";
-import type { CustomerRepository } from "../customers/repository.js";
 import { compareScenarios } from "../scenarios/compare.js";
 import { createSimulationRun } from "../simulations/runs.js";
 import type { TaxProfile } from "../tax/types.js";
-import type { SimulationRunRepository } from "../storage/repository.js";
 import { BillingContextSchema } from "../engine/context.js";
+import type { LedgerRepository } from "../data/repository.js";
 
 export interface RouteDeps {
   engine: InvoiceEngine;
-  plans: PlanRepository;
-  usage: UsageRepository;
-  coupons: CouponRepository;
-  customers: CustomerRepository;
-  simulations: SimulationRunRepository;
+  repository: LedgerRepository;
   serveWeb?: boolean;
 }
 
@@ -160,12 +154,12 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     if (serveWebRoute(request, reply, deps)) {
       return reply;
     }
-    return deps.plans.list();
+    return deps.repository.plans.list();
   });
 
   server.post("/plans", async (request) => {
     const plan = planSchema.parse(request.body) as Plan;
-    deps.plans.save(plan);
+    deps.repository.plans.save(plan);
     return plan;
   });
 
@@ -175,12 +169,12 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     if (serveWebRoute(request, reply, deps)) {
       return reply;
     }
-    return deps.simulations.list();
+    return deps.repository.simulations.list();
   });
 
   server.get("/simulations/:runId", async (request, reply) => {
     const params = z.object({ runId: z.string() }).parse(request.params);
-    const run = deps.simulations.get(params.runId);
+    const run = deps.repository.simulations.get(params.runId);
     if (!run) {
       return reply.status(404).send({
         error: { code: "not_found", message: `Simulation run not found: ${params.runId}` }
@@ -201,7 +195,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       runInput.name = body.name;
     }
     const run = createSimulationRun(runInput);
-    deps.simulations.save(run);
+    deps.repository.simulations.save(run);
     return run;
   });
 
@@ -221,18 +215,18 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.post("/usage/events", async (request, reply) => {
     const event = UsageEventSchema.parse(request.body);
-    const result = deps.usage.ingest(event);
+    const result = deps.repository.usage.ingest(event);
     if (!result.accepted) {
       return reply.status(409).send(result);
     }
     return result;
   });
 
-  server.get("/usage/events", async () => deps.usage.list());
+  server.get("/usage/events", async () => deps.repository.usage.list());
 
   server.post("/usage/aggregate", async (request) => {
     const body = usageAggregateSchema.parse(request.body);
-    const events = deps.usage
+    const events = deps.repository.usage
       .list()
       .filter((event) => !body.customerId || event.customerId === body.customerId);
     return Object.fromEntries(aggregateUsage(events, body.period));
@@ -240,7 +234,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.post("/coupons/validate", async (request, reply) => {
     const body = validateCouponSchema.parse(request.body);
-    const coupon = deps.coupons.get(body.code);
+    const coupon = deps.repository.coupons.get(body.code);
     if (!coupon) {
       return reply.status(404).send({
         error: { code: "not_found", message: `Coupon not found: ${body.code}` }
@@ -253,7 +247,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     if (serveWebRoute(request, reply, deps)) {
       return reply;
     }
-    return deps.customers.listCustomers();
+    return deps.repository.customers.listCustomers();
   });
 
   server.post("/customers", async (request) => {
@@ -270,7 +264,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       customerInput.metadata = body.metadata;
     }
     const customer = createCustomer(customerInput);
-    deps.customers.saveCustomer(customer);
+    deps.repository.customers.saveCustomer(customer);
     return customer;
   });
 
@@ -286,14 +280,14 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       assignmentInput.endsOn = body.endsOn;
     }
     const assignment = assignSubscription(assignmentInput);
-    deps.customers.saveSubscription(assignment);
+    deps.repository.customers.saveSubscription(assignment);
     return assignment;
   });
 
   server.get("/customers/:customerId/billing-profile", async (request, reply) => {
     const params = z.object({ customerId: z.string() }).parse(request.params);
     const query = billingProfileSchema.parse(request.query);
-    const customer = deps.customers.getCustomer(params.customerId);
+    const customer = deps.repository.customers.getCustomer(params.customerId);
     if (!customer) {
       return reply.status(404).send({
         error: { code: "not_found", message: `Customer not found: ${params.customerId}` }
@@ -301,7 +295,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     }
     return resolveBillingProfile(
       customer,
-      deps.customers.listSubscriptions(params.customerId),
+      deps.repository.customers.listSubscriptions(params.customerId),
       query.onDate
     );
   });

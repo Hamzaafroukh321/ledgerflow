@@ -9,14 +9,9 @@ import {
   createDefaultServerDeps,
   AppError,
   MemoryCouponRepository,
+  MemoryLedgerRepository,
   MemoryPlanRepository,
-  MemorySimulationRunRepository,
-  MemoryUsageRepository,
-  SqliteCouponRepository,
-  SqliteCustomerRepository,
-  SqlitePlanRepository,
-  SqliteSimulationRunRepository,
-  SqliteUsageRepository,
+  SqliteLedgerRepository,
   type BillingContext,
   type Invoice,
   type Plan
@@ -479,11 +474,7 @@ describe("api", () => {
   it("uses sqlite repositories when LEDGERFLOW_DB is configured", () => {
     const deps = createDefaultServerDeps({ LEDGERFLOW_DB: ":memory:" });
 
-    expect(deps.plans).toBeInstanceOf(SqlitePlanRepository);
-    expect(deps.usage).toBeInstanceOf(SqliteUsageRepository);
-    expect(deps.coupons).toBeInstanceOf(SqliteCouponRepository);
-    expect(deps.customers).toBeInstanceOf(SqliteCustomerRepository);
-    expect(deps.simulations).toBeInstanceOf(SqliteSimulationRunRepository);
+    expect(deps.repository).toBeInstanceOf(SqliteLedgerRepository);
     expect(
       deps.plans
         .list()
@@ -491,21 +482,7 @@ describe("api", () => {
         .sort()
     ).toEqual(["pro_monthly", "starter_monthly"]);
     expect(deps.coupons.get("SAVE20")).toMatchObject({ code: "SAVE20", value: 20 });
-    if (deps.plans instanceof SqlitePlanRepository) {
-      deps.plans.close();
-    }
-    if (deps.usage instanceof SqliteUsageRepository) {
-      deps.usage.close();
-    }
-    if (deps.coupons instanceof SqliteCouponRepository) {
-      deps.coupons.close();
-    }
-    if (deps.customers instanceof SqliteCustomerRepository) {
-      deps.customers.close();
-    }
-    if (deps.simulations instanceof SqliteSimulationRunRepository) {
-      deps.simulations.close();
-    }
+    deps.repository.close();
   });
 
   it("persists customer profiles through sqlite-backed API restarts", async () => {
@@ -566,9 +543,6 @@ describe("api", () => {
   it("uses memory repositories by default", () => {
     const deps = createDefaultServerDeps({});
 
-    expect(deps.plans).toBeInstanceOf(MemoryPlanRepository);
-    expect(deps.usage).toBeInstanceOf(MemoryUsageRepository);
-    expect(deps.coupons).toBeInstanceOf(MemoryCouponRepository);
-    expect(deps.simulations).toBeInstanceOf(MemorySimulationRunRepository);
+    expect(deps.repository).toBeInstanceOf(MemoryLedgerRepository);
   });
 });

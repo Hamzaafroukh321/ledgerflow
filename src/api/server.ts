@@ -9,29 +9,18 @@ import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 
 import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
-import { MemoryCustomerRepository } from "../customers/repository.js";
 import type { CustomerRepository } from "../customers/repository.js";
+import { MemoryLedgerRepository } from "../data/memory.js";
+import type { LedgerRepository } from "../data/repository.js";
+import { SqliteLedgerRepository } from "../data/sqlite.js";
 import { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import { registerErrorHandler } from "../errors/handler.js";
-import {
-  MemoryCouponRepository,
-  MemoryPlanRepository,
-  MemorySimulationRunRepository,
-  MemoryUsageRepository
-} from "../storage/memory.js";
 import type {
   CouponRepository,
   PlanRepository,
   SimulationRunRepository,
   UsageRepository
 } from "../storage/repository.js";
-import {
-  SqliteCouponRepository,
-  SqliteCustomerRepository,
-  SqlitePlanRepository,
-  SqliteSimulationRunRepository,
-  SqliteUsageRepository
-} from "../storage/sqlite.js";
 import { registerTokenAuth } from "./auth.js";
 import { registerRoutes } from "./routes.js";
 
@@ -39,6 +28,7 @@ const rateLimitPlugin = rateLimit as unknown as FastifyPluginCallback<RateLimitP
 
 export interface ServerDeps {
   engine?: InvoiceEngine;
+  repository?: LedgerRepository;
   plans?: PlanRepository;
   usage?: UsageRepository;
   coupons?: CouponRepository;
@@ -76,18 +66,16 @@ export function buildServer(
   void server.register(swaggerUi, { routePrefix: "/docs" });
   registerErrorHandler(server);
   server.after(() => {
+    const repository = resolveRouteRepository(deps, defaults.repository);
+    const engine = deps.engine ?? resolveRouteEngine(deps, defaults.engine, repository);
     registerTokenAuth(server, {
       token: env.LEDGERFLOW_API_TOKEN,
       serveWeb,
       warnOpenMode: (message) => server.log.warn(message)
     });
     registerRoutes(server, {
-      engine: deps.engine ?? defaults.engine,
-      plans: deps.plans ?? defaults.plans,
-      usage: deps.usage ?? defaults.usage,
-      coupons: deps.coupons ?? defaults.coupons,
-      customers: deps.customers ?? defaults.customers,
-      simulations: deps.simulations ?? defaults.simulations,
+      engine,
+      repository,
       serveWeb
     });
     server.get("/openapi.json", async () => server.swagger());
@@ -122,17 +110,7 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
 }
 
 function closeServerDeps(deps: Required<ServerDeps>): void {
-  for (const repository of [
-    deps.plans,
-    deps.usage,
-    deps.coupons,
-    deps.customers,
-    deps.simulations
-  ]) {
-    if ("close" in repository && typeof repository.close === "function") {
-      repository.close();
-    }
-  }
+  deps.repository.close();
 }
 
 export function createDefaultServerDeps(
@@ -140,34 +118,62 @@ export function createDefaultServerDeps(
 ): Required<ServerDeps> {
   const dbPath = env.LEDGERFLOW_DB;
   if (dbPath) {
-    const plans = new SqlitePlanRepository(dbPath);
-    const usage = new SqliteUsageRepository(dbPath);
-    const coupons = new SqliteCouponRepository(dbPath);
-    const simulations = new SqliteSimulationRunRepository(dbPath);
-    seedDefaultPlans(plans);
-    seedDefaultCoupons(coupons);
+    const repository = new SqliteLedgerRepository(dbPath);
+    seedDefaultPlans(repository.plans);
+    seedDefaultCoupons(repository.coupons);
     return {
-      engine: new InvoiceEngine(plans, coupons),
-      plans,
-      usage,
-      coupons,
-      customers: new SqliteCustomerRepository(dbPath),
-      simulations
+      engine: new InvoiceEngine(repository.plans, repository.coupons),
+      repository,
+      plans: repository.plans,
+      usage: repository.usage,
+      coupons: repository.coupons,
+      customers: repository.customers,
+      simulations: repository.simulations
     };
   }
 
-  const plans = new MemoryPlanRepository();
-  const usage = new MemoryUsageRepository();
-  const coupons = new MemoryCouponRepository();
-  const simulations = new MemorySimulationRunRepository();
-  seedDefaultPlans(plans);
-  seedDefaultCoupons(coupons);
+  const repository = new MemoryLedgerRepository();
+  seedDefaultPlans(repository.plans);
+  seedDefaultCoupons(repository.coupons);
   return {
-    engine: new InvoiceEngine(plans, coupons),
-    plans,
-    usage,
-    coupons,
-    customers: new MemoryCustomerRepository(),
-    simulations
+    engine: new InvoiceEngine(repository.plans, repository.coupons),
+    repository,
+    plans: repository.plans,
+    usage: repository.usage,
+    coupons: repository.coupons,
+    customers: repository.customers,
+    simulations: repository.simulations
   };
+}
+
+function resolveRouteRepository(deps: ServerDeps, fallback: LedgerRepository): LedgerRepository {
+  if (deps.repository) {
+    return deps.repository;
+  }
+  return {
+    plans: deps.plans ?? fallback.plans,
+    usage: deps.usage ?? fallback.usage,
+    coupons: deps.coupons ?? fallback.coupons,
+    customers: deps.customers ?? fallback.customers,
+    simulations: deps.simulations ?? fallback.simulations,
+    transaction: (work) => work(),
+    close: () => undefined
+  };
+}
+
+function resolveRouteEngine(
+  deps: ServerDeps,
+  fallback: InvoiceEngine,
+  repository: LedgerRepository
+): InvoiceEngine {
+  const hasPartialRepositoryOverrides =
+    !deps.repository &&
+    (deps.plans !== undefined ||
+      deps.usage !== undefined ||
+      deps.coupons !== undefined ||
+      deps.customers !== undefined ||
+      deps.simulations !== undefined);
+  return hasPartialRepositoryOverrides
+    ? fallback
+    : new InvoiceEngine(repository.plans, repository.coupons);
 }
