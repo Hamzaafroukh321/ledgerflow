@@ -56,3 +56,14 @@
 - tests: backend 128 passing at 93.96% statements / 91.56% branches; frontend 60 passing at 99.41% statements / 90.51% branches; full verifier passed including 2 Playwright e2e tests and Docker build
 - decisions/notes: Single-token deployments remain admin on the default tenant; multi-token deployments can specify `token:tenantId:subject:role`.
 - blockers (if any): none
+
+## [22:55] Phase 5 - API hardening  (DONE)
+- branch: feat/phase5-api-hardening   commit: 41a6577
+- what changed:
+  - Added request-id propagation across successful responses and every API error envelope.
+  - Mounted the API under `/v1` while keeping legacy root routes available for existing clients.
+  - Added `/v1` cursor pagination envelopes for list endpoints with validated `limit` and `cursor` query parameters.
+  - Added `Idempotency-Key` replay protection for plan and saved simulation writes.
+- tests: backend 134 passing at 93.95% statements / 91.22% branches; frontend 60 passing at 99.41% statements / 90.48% branches; full verifier passed including 2 Playwright e2e tests and Docker build
+- decisions/notes: Legacy root list routes still return arrays for backward compatibility; new integrations should use `/v1` and its page envelopes.
+- blockers (if any): none
