@@ -67,3 +67,14 @@
 - tests: backend 134 passing at 93.95% statements / 91.22% branches; frontend 60 passing at 99.41% statements / 90.48% branches; full verifier passed including 2 Playwright e2e tests and Docker build
 - decisions/notes: Legacy root list routes still return arrays for backward compatibility; new integrations should use `/v1` and its page envelopes.
 - blockers (if any): none
+
+## [23:02] Phase 6 - Billing regression gate product  (DONE)
+- branch: feat/phase6-billing-regression-gate   commit: 57d7017
+- what changed:
+  - Added `ledgerflow assert --context X --expected Y` with exact invoice comparison and a readable field-level drift report.
+  - Added direct and process-level tests for golden matches, mismatches, and exit-code contract behavior.
+  - Added a composite GitHub Action wrapper plus an example pull-request workflow.
+  - Documented adoption steps and the 0/1 exit-code contract in `docs/ci-integration.md`.
+- tests: backend 138 passing at 93.95% statements / 91.23% branches; frontend 60 passing at 99.41% statements / 90.48% branches; full verifier passed including 2 Playwright e2e tests and Docker build
+- decisions/notes: The Action builds the local package before running the assertion so consumers get the same compiled CLI path used in release images.
+- blockers (if any): none
