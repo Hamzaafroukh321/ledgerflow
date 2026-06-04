@@ -96,6 +96,15 @@
         }
       }
     },
+    "/metrics": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/openapi.json": {
       "get": {
         "responses": {
@@ -114,6 +123,15 @@
         }
       },
       "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
         "responses": {
           "200": {
             "description": "Default Response"

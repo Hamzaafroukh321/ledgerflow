@@ -79,4 +79,19 @@ describe("RefundPage", () => {
 
     expect(await screen.findByText(/domain_error: Too much/i)).toBeInTheDocument();
   });
+
+  it("renders unexpected refund failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      })
+    );
+    renderRefunds();
+
+    await user.click(screen.getByRole("button", { name: /simulate refund/i }));
+
+    expect(await screen.findByText(/unexpected refund error/i)).toBeInTheDocument();
+  });
 });

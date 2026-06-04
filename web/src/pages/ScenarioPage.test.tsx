@@ -89,6 +89,21 @@ describe("ScenarioPage", () => {
 
     expect(await screen.findByText(/validation_error: Bad scenario/i)).toBeInTheDocument();
   });
+
+  it("renders unexpected comparison failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      })
+    );
+    renderScenarios();
+
+    await user.click(screen.getByRole("button", { name: /compare scenarios/i }));
+
+    expect(await screen.findByText(/unexpected comparison error/i)).toBeInTheDocument();
+  });
 });
 
 function invoice(total: number) {

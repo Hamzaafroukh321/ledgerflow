@@ -23,12 +23,20 @@ LEDGERFLOW_API_TOKEN=change-me node dist/cli/index.js serve --port 3000
 
 When this variable is set, operational API routes require either
 `Authorization: Bearer <token>` or `x-ledgerflow-token: <token>`.
-`GET /health`, `/docs`, `/openapi.json`, and static web assets remain public so
+`GET /health`, `GET /ready`, `/docs`, `/openapi.json`, and static web assets remain public so
 load balancers, documentation, and the web shell can load normally.
 
 ## `GET /health`
 
 Returns `{ "status": "ok" }`.
+
+## `GET /ready`
+
+Returns `{ "status": "ready" }` when repository access succeeds. Returns HTTP 503 with the standard error envelope when the backing store is unavailable.
+
+## `GET /metrics`
+
+Returns Prometheus text metrics for request counts, request duration sums, invoice simulation count, and HTTP 5xx count. When authentication is enabled, call this endpoint with an API token.
 
 ## `GET /plans`
 

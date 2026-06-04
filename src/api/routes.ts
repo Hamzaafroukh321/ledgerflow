@@ -22,6 +22,7 @@ import type { ScenarioComparison, ScenarioInput, ScenarioResult } from "../scena
 import { withIdempotency, type IdempotencyStore } from "./idempotency.js";
 import type { MembershipDirectory } from "./memberships.js";
 import { paginate } from "./pagination.js";
+import { withSpan } from "./tracing.js";
 
 type RouteRepository = LedgerRepository | AsyncLedgerRepository;
 
@@ -400,9 +401,11 @@ async function requestRepository(
     return deps.repository;
   }
   const principal = request.principal ?? { subject: "open-mode", tenantId: "default" };
-  const repository = scopeRepository(deps.repository, principal.tenantId, principal.subject);
-  await seedTenantCatalog(repository);
-  return repository;
+  return await withSpan("ledgerflow.repository.scope", async () => {
+    const repository = scopeRepository(deps.repository, principal.tenantId, principal.subject);
+    await seedTenantCatalog(repository);
+    return repository;
+  });
 }
 
 async function seedTenantCatalog(repository: RouteRepository): Promise<void> {
@@ -419,26 +422,28 @@ async function seedTenantCatalog(repository: RouteRepository): Promise<void> {
 }
 
 async function simulateInvoice(input: unknown, deps: RouteDeps): Promise<Invoice> {
-  if (deps.simulateWithEngine) {
-    return deps.engine.simulate(input);
-  }
-  const context = BillingContextSchema.parse(input);
-  const plan = await deps.repository.plans.get(context.subscription.planId);
-  if (!plan) {
-    throw new Error(`Plan not found: ${context.subscription.planId}`);
-  }
-  const coupons = Object.fromEntries(
-    await Promise.all(
-      context.coupons.map(async (code) => {
-        const coupon = await deps.repository.coupons.get(code);
-        if (!coupon) {
-          throw new Error(`Coupon not found: ${code}`);
-        }
-        return [coupon.code, coupon] as const;
-      })
-    )
-  );
-  return new InvoiceEngine({ [plan.id]: plan }, coupons).simulate(context);
+  return await withSpan("ledgerflow.invoice.simulate", async () => {
+    if (deps.simulateWithEngine) {
+      return deps.engine.simulate(input);
+    }
+    const context = BillingContextSchema.parse(input);
+    const plan = await deps.repository.plans.get(context.subscription.planId);
+    if (!plan) {
+      throw new Error(`Plan not found: ${context.subscription.planId}`);
+    }
+    const coupons = Object.fromEntries(
+      await Promise.all(
+        context.coupons.map(async (code) => {
+          const coupon = await deps.repository.coupons.get(code);
+          if (!coupon) {
+            throw new Error(`Coupon not found: ${code}`);
+          }
+          return [coupon.code, coupon] as const;
+        })
+      )
+    );
+    return new InvoiceEngine({ [plan.id]: plan }, coupons).simulate(context);
+  });
 }
 
 async function compareScenariosWithRepository(

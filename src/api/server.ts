@@ -25,12 +25,14 @@ import type {
 import { registerTokenAuth } from "./auth.js";
 import { MemoryIdempotencyStore, type IdempotencyStore } from "./idempotency.js";
 import { MemoryMembershipDirectory, type MembershipDirectory } from "./memberships.js";
+import { registerObservability } from "./observability.js";
 import { registerRbac } from "./rbac.js";
 import { registerRequestIds } from "./request-id.js";
 import { registerRoutes } from "./routes.js";
 
 const rateLimitPlugin = rateLimit as unknown as FastifyPluginCallback<RateLimitPluginOptions>;
 type RouteRepository = LedgerRepository | AsyncLedgerRepository;
+type DefaultServerDeps = Required<Omit<ServerDeps, "logSink">>;
 
 export interface ServerDeps {
   engine?: InvoiceEngine;
@@ -42,6 +44,7 @@ export interface ServerDeps {
   simulations?: SimulationRunRepository;
   memberships?: MembershipDirectory;
   idempotency?: IdempotencyStore;
+  logSink?: (line: string) => void;
 }
 
 export function buildServer(
@@ -79,6 +82,11 @@ export function buildServer(
     const simulateWithEngine = shouldUseFallbackEngine(deps);
     const engine = deps.engine ?? resolveRouteEngine(simulateWithEngine, defaults.engine, repository);
     registerRequestIds(server);
+    registerObservability(server, {
+      repository,
+      enabled: env.LEDGERFLOW_LOGS === "1",
+      logSink: deps.logSink
+    });
     registerTokenAuth(server, {
       token: env.LEDGERFLOW_API_TOKEN,
       tokens: env.LEDGERFLOW_API_TOKENS,
@@ -145,13 +153,13 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-async function closeServerDeps(deps: Required<ServerDeps>): Promise<void> {
+async function closeServerDeps(deps: DefaultServerDeps): Promise<void> {
   await deps.repository.close();
 }
 
 export function createDefaultServerDeps(
   env: Record<string, string | undefined> = process.env
-): Required<ServerDeps> {
+): DefaultServerDeps {
   const dbUrl = env.LEDGERFLOW_DB_URL;
   if (dbUrl) {
     const repository = PostgresLedgerRepository.fromUrl(dbUrl);

@@ -66,7 +66,7 @@ function requiredPermission(request: FastifyRequest): Permission | undefined {
 
 function isPublic(request: FastifyRequest): boolean {
   const path = normalizePath(request.url.split("?")[0] ?? request.url);
-  return path === "/health" || path === "/openapi.json" || path === "/docs" || path.startsWith("/docs/");
+  return path === "/health" || path === "/ready" || path === "/openapi.json" || path === "/docs" || path.startsWith("/docs/");
 }
 
 function normalizePath(path: string): string {

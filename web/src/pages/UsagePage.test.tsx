@@ -65,4 +65,16 @@ describe("UsagePage", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/usage\/aggregate$/), expect.objectContaining({ method: "POST" }));
   });
+
+  it("renders unexpected usage failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      })
+    );
+    renderUsage();
+
+    expect(await screen.findByText(/unexpected usage error/i)).toBeInTheDocument();
+  });
 });

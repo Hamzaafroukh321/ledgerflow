@@ -363,6 +363,80 @@ describe("api", () => {
     await server.close();
   });
 
+  it("exposes readiness, Prometheus metrics, and structured request logs", async () => {
+    const logs: string[] = [];
+    const server = buildServer(
+      { logSink: (line) => logs.push(line) },
+      { LEDGERFLOW_API_TOKENS: "obs-token:tenant-obs:user-obs:viewer" }
+    );
+
+    const ready = await server.inject({ method: "GET", url: "/ready" });
+    const simulated = await server.inject({
+      method: "POST",
+      url: "/v1/invoices/simulate",
+      headers: { authorization: "Bearer obs-token", "x-request-id": "req-obs" },
+      payload: context
+    });
+    const metrics = await server.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: { authorization: "Bearer obs-token" }
+    });
+
+    expect(ready.statusCode).toBe(200);
+    expect(ready.json()).toEqual({ status: "ready" });
+    expect(simulated.statusCode).toBe(200);
+    expect(metrics.body).toContain("ledgerflow_http_requests_total");
+    expect(metrics.body).toContain('route="/v1/invoices/simulate"');
+    expect(metrics.body).toContain("ledgerflow_simulations_total 1");
+    const parsedLog = JSON.parse(logs.find((line) => line.includes("req-obs")) ?? "{}") as {
+      requestId?: string;
+      tenantId?: string;
+      subject?: string;
+      msg?: string;
+    };
+    expect(parsedLog).toMatchObject({
+      msg: "request completed",
+      requestId: "req-obs",
+      tenantId: "tenant-obs",
+      subject: "user-obs"
+    });
+
+    await server.close();
+  });
+
+  it("keeps liveness up while readiness fails for an unavailable repository", async () => {
+    const repository = new MemoryLedgerRepository();
+    const failingRepository = {
+      plans: {
+        get: async (planId: string) => repository.plans.get(planId),
+        save: async (plan: Plan) => repository.plans.save(plan),
+        list: async () => {
+          throw new Error("database unavailable");
+        }
+      },
+      usage: repository.usage,
+      coupons: repository.coupons,
+      customers: repository.customers,
+      simulations: repository.simulations,
+      transaction: repository.transaction.bind(repository),
+      close: repository.close.bind(repository)
+    };
+    const server = buildServer({ repository: failingRepository as never });
+
+    const health = await server.inject({ method: "GET", url: "/health" });
+    const ready = await server.inject({ method: "GET", url: "/ready" });
+
+    expect(health.statusCode).toBe(200);
+    expect(ready.statusCode).toBe(503);
+    expect(ready.json().error).toMatchObject({
+      code: "not_ready",
+      message: "database unavailable"
+    });
+
+    await server.close();
+  });
+
   it("requires a configured API token on operational routes", async () => {
     const webRoot = mkdtempSync(join(tmpdir(), "ledgerflow-web-"));
     writeFileSync(join(webRoot, "index.html"), "<!doctype html><title>LedgerFlow UI</title>");

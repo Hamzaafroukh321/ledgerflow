@@ -91,7 +91,13 @@ function isPublicRequest(request: FastifyRequest, options: TokenAuthOptions): bo
   }
 
   const path = request.url.split("?")[0] ?? request.url;
-  if (path === "/health" || path === "/openapi.json" || path === "/docs" || path.startsWith("/docs/")) {
+  if (
+    path === "/health" ||
+    path === "/ready" ||
+    path === "/openapi.json" ||
+    path === "/docs" ||
+    path.startsWith("/docs/")
+  ) {
     return true;
   }
 

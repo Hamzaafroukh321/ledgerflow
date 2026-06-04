@@ -47,7 +47,11 @@ export function registerErrorHandler(server: FastifyInstance): void {
       return;
     }
     void reply.status(500).send({
-      error: { code: "internal_error", message: error.message, requestId: request.requestId }
+      error: {
+        code: "internal_error",
+        message: error instanceof Error ? error.message : String(error),
+        requestId: request.requestId
+      }
     });
   });
 }
