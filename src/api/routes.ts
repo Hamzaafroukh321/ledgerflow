@@ -198,7 +198,11 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     const run = await repository.simulations.get(params.runId);
     if (!run) {
       return reply.status(404).send({
-        error: { code: "not_found", message: `Simulation run not found: ${params.runId}` }
+        error: {
+          code: "not_found",
+          message: `Simulation run not found: ${params.runId}`,
+          requestId: request.requestId
+        }
       });
     }
     return run;
@@ -271,7 +275,11 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     const coupon = await repository.coupons.get(body.code);
     if (!coupon) {
       return reply.status(404).send({
-        error: { code: "not_found", message: `Coupon not found: ${body.code}` }
+        error: {
+          code: "not_found",
+          message: `Coupon not found: ${body.code}`,
+          requestId: request.requestId
+        }
       });
     }
     return validateCoupon(coupon);
@@ -328,7 +336,11 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     const customer = await repository.customers.getCustomer(params.customerId);
     if (!customer) {
       return reply.status(404).send({
-        error: { code: "not_found", message: `Customer not found: ${params.customerId}` }
+        error: {
+          code: "not_found",
+          message: `Customer not found: ${params.customerId}`,
+          requestId: request.requestId
+        }
       });
     }
     return resolveBillingProfile(

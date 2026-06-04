@@ -156,6 +156,26 @@ describe("api", () => {
     await server.close();
   });
 
+  it("propagates request ids through headers and error envelopes", async () => {
+    const server = buildServer();
+
+    const health = await server.inject({
+      method: "GET",
+      url: "/health",
+      headers: { "x-request-id": "req-health" }
+    });
+    const invalid = await server.inject({
+      method: "POST",
+      url: "/usage/events",
+      payload: {}
+    });
+
+    expect(health.headers["x-request-id"]).toBe("req-health");
+    expect(invalid.headers["x-request-id"]).toEqual(expect.any(String));
+    expect(invalid.json().error.requestId).toBe(invalid.headers["x-request-id"]);
+    await server.close();
+  });
+
   it("requires a configured API token on operational routes", async () => {
     const webRoot = mkdtempSync(join(tmpdir(), "ledgerflow-web-"));
     writeFileSync(join(webRoot, "index.html"), "<!doctype html><title>LedgerFlow UI</title>");
@@ -178,7 +198,7 @@ describe("api", () => {
     const missingToken = await server.inject({
       method: "GET",
       url: "/plans",
-      headers: { accept: "application/json" }
+      headers: { accept: "application/json", "x-request-id": "req-missing-token" }
     });
     const wrongToken = await server.inject({
       method: "GET",
@@ -205,7 +225,8 @@ describe("api", () => {
     expect(missingToken.json()).toEqual({
       error: {
         code: "unauthorized",
-        message: "A valid LedgerFlow API token is required."
+        message: "A valid LedgerFlow API token is required.",
+        requestId: "req-missing-token"
       }
     });
     expect(wrongToken.statusCode).toBe(401);
@@ -349,10 +370,19 @@ describe("api", () => {
       throw new AppError("forced_error", "Forced failure", 418, { reason: "test" });
     });
 
-    const response = await server.inject({ method: "GET", url: "/forced-error" });
+    const response = await server.inject({
+      method: "GET",
+      url: "/forced-error",
+      headers: { "x-request-id": "req-forced" }
+    });
     expect(response.statusCode).toBe(418);
     expect(response.json()).toEqual({
-      error: { code: "forced_error", message: "Forced failure", details: { reason: "test" } }
+      error: {
+        code: "forced_error",
+        message: "Forced failure",
+        details: { reason: "test" },
+        requestId: "req-forced"
+      }
     });
     await server.close();
   });
@@ -678,14 +708,15 @@ describe("api", () => {
     const deniedPlan = await server.inject({
       method: "POST",
       url: "/plans",
-      headers: viewer,
+      headers: { ...viewer, "x-request-id": "req-denied-plan" },
       payload: plan
     });
     expect(deniedPlan.statusCode).toBe(403);
     expect(deniedPlan.json()).toEqual({
       error: {
         code: "forbidden",
-        message: "This action requires write permission."
+        message: "This action requires write permission.",
+        requestId: "req-denied-plan"
       }
     });
     expect(

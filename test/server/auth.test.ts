@@ -65,7 +65,8 @@ describe("token auth", () => {
     expect(response.json()).toEqual({
       error: {
         code: "unauthorized",
-        message: "A valid LedgerFlow API token is required."
+        message: "A valid LedgerFlow API token is required.",
+        requestId: expect.any(String)
       }
     });
     await server.close();

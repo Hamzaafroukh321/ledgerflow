@@ -25,6 +25,7 @@ import type {
 import { registerTokenAuth } from "./auth.js";
 import { MemoryMembershipDirectory, type MembershipDirectory } from "./memberships.js";
 import { registerRbac } from "./rbac.js";
+import { registerRequestIds } from "./request-id.js";
 import { registerRoutes } from "./routes.js";
 
 const rateLimitPlugin = rateLimit as unknown as FastifyPluginCallback<RateLimitPluginOptions>;
@@ -75,6 +76,7 @@ export function buildServer(
     const repository = resolveRouteRepository(deps, defaults.repository);
     const simulateWithEngine = shouldUseFallbackEngine(deps);
     const engine = deps.engine ?? resolveRouteEngine(simulateWithEngine, defaults.engine, repository);
+    registerRequestIds(server);
     registerTokenAuth(server, {
       token: env.LEDGERFLOW_API_TOKEN,
       tokens: env.LEDGERFLOW_API_TOKENS,
@@ -97,7 +99,13 @@ export function buildServer(
         if (request.method === "GET" && acceptsHtml) {
           return reply.sendFile("index.html");
         }
-        return reply.code(404).send({ error: { code: "not_found", message: "Route not found" } });
+        return reply.code(404).send({
+          error: {
+            code: "not_found",
+            message: "Route not found",
+            requestId: request.requestId
+          }
+        });
       });
     }
   });

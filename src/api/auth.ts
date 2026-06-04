@@ -51,7 +51,7 @@ export function registerTokenAuth(server: FastifyInstance, options: TokenAuthOpt
       return;
     }
 
-    await sendUnauthorized(reply);
+    await sendUnauthorized(reply, request.requestId);
   });
 }
 
@@ -145,11 +145,12 @@ function matchesToken(candidate: string | undefined, expected: string): boolean 
   return candidateBuffer.length === expectedBuffer.length && timingSafeEqual(candidateBuffer, expectedBuffer);
 }
 
-async function sendUnauthorized(reply: FastifyReply): Promise<void> {
+async function sendUnauthorized(reply: FastifyReply, requestId: string): Promise<void> {
   await reply.status(401).send({
     error: {
       code: "unauthorized",
-      message: "A valid LedgerFlow API token is required."
+      message: "A valid LedgerFlow API token is required.",
+      requestId
     }
   });
 }

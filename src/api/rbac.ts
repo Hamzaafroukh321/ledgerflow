@@ -21,7 +21,7 @@ export function registerRbac(server: FastifyInstance): void {
       return;
     }
     if (!rolePermissions[principal.role].has(required)) {
-      await sendForbidden(reply, required);
+      await sendForbidden(reply, required, request.requestId);
     }
   });
 }
@@ -69,11 +69,16 @@ function isPublic(request: FastifyRequest): boolean {
   return path === "/health" || path === "/openapi.json" || path === "/docs" || path.startsWith("/docs/");
 }
 
-async function sendForbidden(reply: FastifyReply, required: Permission): Promise<void> {
+async function sendForbidden(
+  reply: FastifyReply,
+  required: Permission,
+  requestId: string
+): Promise<void> {
   await reply.status(403).send({
     error: {
       code: "forbidden",
-      message: `This action requires ${required} permission.`
+      message: `This action requires ${required} permission.`,
+      requestId
     }
   });
 }
