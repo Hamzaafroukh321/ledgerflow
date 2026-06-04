@@ -34,3 +34,14 @@
 - tests: backend 122 passing at 93.44% statements / 90.79% branches; frontend 59 passing at 99.40% statements / 90.27% branches; full verifier passed including 2 Playwright e2e tests and Docker build
 - decisions/notes: pg-mem does not model Pool rollback semantics fully, so transaction rollback coverage asserts LedgerFlow's `BEGIN`/`ROLLBACK`/release choreography directly while the adapter contract covers persistence behavior.
 - blockers (if any): none
+
+## [22:31] Phase 3 - Tenants and data isolation  (DONE)
+- branch: feat/phase3-tenants-isolation   commit: 11ca69a
+- what changed:
+  - Added multi-token principal resolution with tenant ids and request-scoped repositories.
+  - Added tenant/user/membership migrations plus tenant ownership columns and indexes.
+  - Enforced tenant scoping for plans, coupons, usage, customers, subscriptions, and saved simulations through `scopeRepository`.
+  - Added endpoint and repository tests proving private plans/coupons/simulations are hidden across tenants.
+- tests: backend 127 passing at 93.88% statements / 91.91% branches with scoped repository coverage at 100%; frontend 59 passing at 99.40% statements / 90.27% branches; full verifier passed including 2 Playwright e2e tests and Docker build
+- decisions/notes: The repository wrapper keeps memory, SQLite, and Postgres on the same isolation contract while the Phase 3 migration adds tenant-owned schema shape for hosted Postgres.
+- blockers (if any): none
