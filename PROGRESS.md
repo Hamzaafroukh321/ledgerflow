@@ -45,3 +45,14 @@
 - tests: backend 127 passing at 93.88% statements / 91.91% branches with scoped repository coverage at 100%; frontend 59 passing at 99.40% statements / 90.27% branches; full verifier passed including 2 Playwright e2e tests and Docker build
 - decisions/notes: The repository wrapper keeps memory, SQLite, and Postgres on the same isolation contract while the Phase 3 migration adds tenant-owned schema shape for hosted Postgres.
 - blockers (if any): none
+
+## [22:43] Phase 4 - Roles and permissions  (DONE)
+- branch: feat/phase4-rbac   commit: 6266a14
+- what changed:
+  - Added viewer/editor/admin principals, token role mapping, and Fastify RBAC enforcement.
+  - Added stable 403 envelopes for forbidden writes and admin-only membership routes.
+  - Added tenant-local membership management for admins and updated OpenAPI/docs.
+  - Added console role detection so viewer mode hides plan write controls.
+- tests: backend 128 passing at 93.96% statements / 91.56% branches; frontend 60 passing at 99.41% statements / 90.51% branches; full verifier passed including 2 Playwright e2e tests and Docker build
+- decisions/notes: Single-token deployments remain admin on the default tenant; multi-token deployments can specify `token:tenantId:subject:role`.
+- blockers (if any): none
