@@ -84,7 +84,7 @@ const scenarioComparisonSchema = z.object({
 
 const validateCouponSchema = z.object({
   code: z.string(),
-  context: z.record(z.unknown()).optional()
+  context: z.record(z.string(), z.unknown()).optional()
 });
 
 const usageAggregateSchema = z.object({
@@ -130,9 +130,9 @@ const customerSchema = z.object({
     jurisdiction: z.string(),
     reverseCharge: z.boolean().optional(),
     inclusive: z.boolean().optional(),
-    rates: z.record(z.number()).optional()
+    rates: z.record(z.string(), z.number()).optional()
   }),
-  metadata: z.record(z.string()).optional()
+  metadata: z.record(z.string(), z.string()).optional()
 });
 
 const subscriptionSchema = z.object({

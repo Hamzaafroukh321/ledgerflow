@@ -8,7 +8,13 @@ import { PlanSelect } from "../components/forms/PlanSelect";
 import { InvoiceView } from "../components/InvoiceView";
 import { TraceTree } from "../components/TraceTree";
 import { ApiError } from "../lib/apiClient";
-import { buildBillingContext, defaultSimulatorValues, simulatorFormSchema, type SimulatorFormValues } from "../lib/simulator";
+import {
+  buildBillingContext,
+  defaultSimulatorValues,
+  simulatorFormSchema,
+  type SimulatorFormInput,
+  type SimulatorFormValues
+} from "../lib/simulator";
 import { useSimulateInvoice } from "../hooks/useSimulateInvoice";
 
 export function SimulatorPage() {
@@ -18,7 +24,7 @@ export function SimulatorPage() {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<SimulatorFormValues>({
+  } = useForm<SimulatorFormInput, unknown, SimulatorFormValues>({
     resolver: zodResolver(simulatorFormSchema),
     defaultValues: defaultSimulatorValues
   });

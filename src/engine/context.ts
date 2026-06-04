@@ -14,7 +14,7 @@ export const BillingContextSchema = z.object({
       jurisdiction: z.string(),
       reverseCharge: z.boolean().optional(),
       inclusive: z.boolean().optional(),
-      rates: z.record(z.number()).optional()
+      rates: z.record(z.string(), z.number()).optional()
     })
   }),
   subscription: z.object({

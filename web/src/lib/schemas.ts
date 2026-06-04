@@ -18,7 +18,7 @@ export const traceNodeSchema: z.ZodType<TraceNode> = z.lazy(() =>
     id: z.string(),
     rule: z.string(),
     total: z.number().int(),
-    inputs: z.record(z.unknown()).optional(),
+    inputs: z.record(z.string(), z.unknown()).optional(),
     children: z.array(traceNodeSchema)
   })
 );
@@ -80,7 +80,7 @@ export const billingContextSchema = z.object({
       jurisdiction: z.string(),
       reverseCharge: z.boolean().optional(),
       inclusive: z.boolean().optional(),
-      rates: z.record(z.number()).optional()
+      rates: z.record(z.string(), z.number()).optional()
     })
   }),
   subscription: z.object({
@@ -184,7 +184,7 @@ export const customerSchema = z.object({
   name: z.string(),
   email: z.string().optional(),
   taxProfile: billingContextSchema.shape.customer.shape.taxProfile,
-  metadata: z.record(z.string()).optional()
+  metadata: z.record(z.string(), z.string()).optional()
 });
 
 export const customersSchema = z.array(customerSchema);
@@ -221,7 +221,7 @@ export const usageEventSchema = z.object({
 });
 
 export const usageEventsSchema = z.array(usageEventSchema);
-export const usageAggregateSchema = z.record(z.number());
+export const usageAggregateSchema = z.record(z.string(), z.number());
 
 export const refundResultSchema = z.object({
   allocations: z.array(
