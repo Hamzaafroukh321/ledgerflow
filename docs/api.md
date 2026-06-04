@@ -2,6 +2,8 @@
 
 The Fastify server exposes interactive Swagger UI at `/docs` and the generated OpenAPI document at `/openapi.json`.
 
+All operational routes are available both at the legacy root path and under `/v1`. New integrations should prefer `/v1`.
+
 ```sh
 npm run build
 node dist/cli/index.js serve --port 3000

@@ -107,16 +107,17 @@ function isPublicRequest(request: FastifyRequest, options: TokenAuthOptions): bo
 }
 
 function isApiPath(path: string): boolean {
-  return path.startsWith("/plans")
-    || path.startsWith("/invoices")
-    || path.startsWith("/simulations")
-    || path.startsWith("/usage")
-    || path.startsWith("/coupons")
-    || path.startsWith("/customers")
-    || path.startsWith("/subscriptions")
-    || path.startsWith("/refunds")
-    || path.startsWith("/scenarios")
-    || path.startsWith("/memberships");
+  const normalized = path.startsWith("/v1/") ? path.slice("/v1".length) : path;
+  return normalized.startsWith("/plans")
+    || normalized.startsWith("/invoices")
+    || normalized.startsWith("/simulations")
+    || normalized.startsWith("/usage")
+    || normalized.startsWith("/coupons")
+    || normalized.startsWith("/customers")
+    || normalized.startsWith("/subscriptions")
+    || normalized.startsWith("/refunds")
+    || normalized.startsWith("/scenarios")
+    || normalized.startsWith("/memberships");
 }
 
 function acceptsHtml(request: FastifyRequest): boolean {

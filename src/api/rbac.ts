@@ -28,7 +28,7 @@ export function registerRbac(server: FastifyInstance): void {
 
 function requiredPermission(request: FastifyRequest): Permission | undefined {
   const method = request.method.toUpperCase();
-  const path = request.url.split("?")[0] ?? request.url;
+  const path = normalizePath(request.url.split("?")[0] ?? request.url);
 
   if (method === "GET") {
     return path === "/memberships" ? "admin" : "read";
@@ -65,8 +65,12 @@ function requiredPermission(request: FastifyRequest): Permission | undefined {
 }
 
 function isPublic(request: FastifyRequest): boolean {
-  const path = request.url.split("?")[0] ?? request.url;
+  const path = normalizePath(request.url.split("?")[0] ?? request.url);
   return path === "/health" || path === "/openapi.json" || path === "/docs" || path.startsWith("/docs/");
+}
+
+function normalizePath(path: string): string {
+  return path.startsWith("/v1/") ? path.slice("/v1".length) : path;
 }
 
 async function sendForbidden(

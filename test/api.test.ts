@@ -144,6 +144,75 @@ describe("api", () => {
     await server.close();
   });
 
+  it("serves the v1 API namespace with the same route contracts", async () => {
+    const server = buildServer();
+
+    expect((await server.inject({ method: "GET", url: "/v1/health" })).json()).toEqual({
+      status: "ok"
+    });
+    expect(
+      (await server.inject({ method: "GET", url: "/v1/plans" })).json<Plan[]>().map((plan) => plan.id)
+    ).toEqual(["pro_monthly", "starter_monthly"]);
+    const simulated = await server.inject({
+      method: "POST",
+      url: "/v1/invoices/simulate",
+      payload: context
+    });
+    expect(simulated.statusCode).toBe(200);
+    expect(simulated.json<Invoice>().totals.total).toBe(2900);
+
+    await server.close();
+  });
+
+  it("protects v1 writes with the same auth and role gates", async () => {
+    const server = buildServer(
+      {},
+      {
+        LEDGERFLOW_API_TOKENS:
+          "viewer-v1:tenant-v1:viewer-user:viewer,editor-v1:tenant-v1:editor-user:editor"
+      }
+    );
+    const plan: Plan = {
+      id: "v1_private",
+      name: "V1 Private",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 500
+        }
+      ]
+    };
+
+    expect((await server.inject({ method: "POST", url: "/v1/plans", payload: plan })).statusCode).toBe(401);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/plans",
+          headers: { authorization: "Bearer viewer-v1" },
+          payload: plan
+        })
+      ).statusCode
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/plans",
+          headers: { authorization: "Bearer editor-v1" },
+          payload: plan
+        })
+      ).statusCode
+    ).toBe(200);
+
+    await server.close();
+  });
+
   it("serves OpenAPI JSON and Swagger UI", async () => {
     const server = buildServer();
 

@@ -91,6 +91,19 @@ export function buildServer(
       simulateWithEngine,
       serveWeb
     });
+    void server.register(
+      (scoped, _options, done) => {
+        registerRoutes(scoped, {
+          engine,
+          repository,
+          memberships: deps.memberships ?? defaults.memberships,
+          simulateWithEngine,
+          serveWeb: false
+        });
+        done();
+      },
+      { prefix: "/v1" }
+    );
     server.get("/openapi.json", async () => server.swagger());
     if (webRoot) {
       void server.register(fastifyStatic, { root: webRoot, wildcard: false });
