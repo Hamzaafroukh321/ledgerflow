@@ -78,3 +78,14 @@
 - tests: backend 138 passing at 93.95% statements / 91.23% branches; frontend 60 passing at 99.41% statements / 90.48% branches; full verifier passed including 2 Playwright e2e tests and Docker build
 - decisions/notes: The Action builds the local package before running the assertion so consumers get the same compiled CLI path used in release images.
 - blockers (if any): none
+
+## [23:25] Phase 7 - Observability and operations  (DONE)
+- branch: feat/phase7-observability-ops   commit: e0c10f7
+- what changed:
+  - Added `/ready` repository readiness checks and authenticated Prometheus metrics for request, simulation, duration, and error counters.
+  - Added opt-in structured JSON request logs with request id, tenant, subject, route, status, and latency fields.
+  - Wrapped tenant repository access and simulation execution in OpenTelemetry spans.
+  - Documented readiness, metrics, log fields, tracing, and dashboard queries in `docs/observability.md`.
+- tests: backend 140 passing at 94.20% statements / 91.08% branches; frontend 67 passing at 97.82% statements / 90.16% branches; full verifier passed including 2 Playwright e2e tests and Docker build
+- decisions/notes: Upgraded Fastify, Vite, Vitest, React Router, and related plugins to clear root and web dependency audits; `LEDGERFLOW_LOGS=1` enables stdout JSON logs.
+- blockers (if any): none
