@@ -26,6 +26,10 @@ export class SqliteStore {
     this.db.close();
   }
 
+  public transaction<T>(work: () => T): T {
+    return this.db.transaction(work)();
+  }
+
   public list(): Plan[] {
     return this.listPlans();
   }
