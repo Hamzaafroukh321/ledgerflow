@@ -21,6 +21,12 @@ export function registerErrorHandler(server: FastifyInstance): void {
       void reply.status(error.status).send(envelope);
       return;
     }
+    if (hasHttpStatus(error)) {
+      void reply.status(error.statusCode).send({
+        error: { code: "request_error", message: error.message }
+      });
+      return;
+    }
     if (error instanceof Error && /not found/i.test(error.message)) {
       void reply.status(404).send({
         error: { code: "not_found", message: error.message }
@@ -37,4 +43,10 @@ export function registerErrorHandler(server: FastifyInstance): void {
       error: { code: "internal_error", message: error.message }
     });
   });
+}
+
+function hasHttpStatus(error: unknown): error is Error & { statusCode: number } {
+  return error instanceof Error
+    && "statusCode" in error
+    && typeof (error as { statusCode: unknown }).statusCode === "number";
 }

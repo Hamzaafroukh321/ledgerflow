@@ -94,8 +94,15 @@ program
 program
   .command("serve")
   .option("--port <port>", "Port to listen on", "3000")
-  .action(async (options: { port: string }) => {
-    const server = buildServer();
+  .option("--api-token <token>", "Bearer token required for API requests")
+  .action(async (options: { port: string; apiToken?: string }) => {
+    const server = buildServer(
+      {},
+      {
+        ...process.env,
+        LEDGERFLOW_API_TOKEN: options.apiToken ?? process.env.LEDGERFLOW_API_TOKEN
+      }
+    );
     await server.listen({ host: "0.0.0.0", port: Number.parseInt(options.port, 10) });
   });
 

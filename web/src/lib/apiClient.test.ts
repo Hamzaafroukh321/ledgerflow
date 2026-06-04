@@ -75,7 +75,7 @@ describe("api client", () => {
     expect(fetchImpl).toHaveBeenCalledWith(
       expect.stringMatching(/\/plans$/),
       expect.objectContaining({
-        headers: expect.objectContaining({ "x-ledgerflow-token": "fixture-token" })
+        headers: expect.objectContaining({ authorization: "Bearer fixture-token" })
       })
     );
   });
@@ -123,7 +123,7 @@ describe("api client", () => {
     expect(fetchImpl).toHaveBeenCalledWith(
       "https://ledgerflow.example/api/plans",
       expect.objectContaining({
-        headers: expect.objectContaining({ "x-ledgerflow-token": "fixture-token" })
+        headers: expect.objectContaining({ authorization: "Bearer fixture-token" })
       })
     );
   });

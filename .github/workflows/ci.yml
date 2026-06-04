@@ -81,3 +81,5 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: docker compose build
+        env:
+          LEDGERFLOW_API_TOKEN: ci-token

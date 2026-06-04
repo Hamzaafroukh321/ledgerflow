@@ -2,26 +2,28 @@ import { timingSafeEqual } from "node:crypto";
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+export interface Principal {
+  subject: string;
+  tenantId: string;
+  role: "admin";
+}
+
 export interface TokenAuthOptions {
   token?: string | undefined;
   serveWeb?: boolean;
+  warnOpenMode?: (message: string) => void;
 }
 
-const API_ROUTE_PREFIXES = [
-  "/plans",
-  "/invoices",
-  "/simulations",
-  "/usage",
-  "/coupons",
-  "/customers",
-  "/subscriptions",
-  "/refunds",
-  "/scenarios"
-];
+declare module "fastify" {
+  interface FastifyRequest {
+    principal?: Principal;
+  }
+}
 
 export function registerTokenAuth(server: FastifyInstance, options: TokenAuthOptions): void {
   const token = options.token?.trim();
   if (!token) {
+    options.warnOpenMode?.("LEDGERFLOW_API_TOKEN is unset; API authentication is in open mode.");
     return;
   }
 
@@ -31,6 +33,7 @@ export function registerTokenAuth(server: FastifyInstance, options: TokenAuthOpt
     }
 
     if (matchesToken(readRequestToken(request), token)) {
+      request.principal = { subject: "api-token", tenantId: "default", role: "admin" };
       return;
     }
 
@@ -48,19 +51,27 @@ function isPublicRequest(request: FastifyRequest, options: TokenAuthOptions): bo
     return true;
   }
 
-  if (options.serveWeb && request.method === "GET" && !isApiRoute(path)) {
-    return true;
-  }
-
   if (options.serveWeb && request.method === "GET" && acceptsHtml(request)) {
     return true;
   }
 
-  return !isApiRoute(path);
+  if (options.serveWeb && request.method === "GET" && !isApiPath(path)) {
+    return true;
+  }
+
+  return false;
 }
 
-function isApiRoute(path: string): boolean {
-  return API_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+function isApiPath(path: string): boolean {
+  return path.startsWith("/plans")
+    || path.startsWith("/invoices")
+    || path.startsWith("/simulations")
+    || path.startsWith("/usage")
+    || path.startsWith("/coupons")
+    || path.startsWith("/customers")
+    || path.startsWith("/subscriptions")
+    || path.startsWith("/refunds")
+    || path.startsWith("/scenarios");
 }
 
 function acceptsHtml(request: FastifyRequest): boolean {

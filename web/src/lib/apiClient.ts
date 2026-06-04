@@ -143,7 +143,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
 }
 
 function authHeader(apiToken: string | undefined): Record<string, string> {
-  return apiToken ? { "x-ledgerflow-token": apiToken } : {};
+  return apiToken ? { authorization: `Bearer ${apiToken}` } : {};
 }
 
 export const apiClient = createApiClient();

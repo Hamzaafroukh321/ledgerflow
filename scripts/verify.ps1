@@ -51,7 +51,21 @@ try {
   }
 
   if (-not $SkipDocker) {
-    Invoke-Step "docker build" { docker compose build }
+    Invoke-Step "docker build" {
+      $previousToken = $env:LEDGERFLOW_API_TOKEN
+      try {
+        if (-not $previousToken) {
+          $env:LEDGERFLOW_API_TOKEN = "verify-token"
+        }
+        docker compose build
+      } finally {
+        if ($null -eq $previousToken) {
+          Remove-Item Env:LEDGERFLOW_API_TOKEN -ErrorAction SilentlyContinue
+        } else {
+          $env:LEDGERFLOW_API_TOKEN = $previousToken
+        }
+      }
+    }
   }
 } finally {
   Pop-Location

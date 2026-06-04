@@ -4,7 +4,11 @@ services:
     ports:
       - "3000:3000"
     environment:
+      LEDGERFLOW_API_TOKEN: ${LEDGERFLOW_API_TOKEN:?Set LEDGERFLOW_API_TOKEN before starting LedgerFlow}
       LEDGERFLOW_DB: ${LEDGERFLOW_DB:-/data/ledgerflow.sqlite}
+      LEDGERFLOW_BODY_LIMIT_BYTES: ${LEDGERFLOW_BODY_LIMIT_BYTES:-1048576}
+      LEDGERFLOW_RATE_LIMIT_MAX: ${LEDGERFLOW_RATE_LIMIT_MAX:-300}
+      LEDGERFLOW_RATE_LIMIT_WINDOW: ${LEDGERFLOW_RATE_LIMIT_WINDOW:-1 minute}
     volumes:
       - ledgerflow-data:/data
 
