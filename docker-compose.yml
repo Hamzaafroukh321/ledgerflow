@@ -1,16 +1,36 @@
 services:
   ledgerflow:
     build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "3000:3000"
     environment:
       LEDGERFLOW_API_TOKEN: ${LEDGERFLOW_API_TOKEN:?Set LEDGERFLOW_API_TOKEN before starting LedgerFlow}
       LEDGERFLOW_DB: ${LEDGERFLOW_DB:-/data/ledgerflow.sqlite}
+      LEDGERFLOW_DB_URL: ${LEDGERFLOW_DB_URL:-}
       LEDGERFLOW_BODY_LIMIT_BYTES: ${LEDGERFLOW_BODY_LIMIT_BYTES:-1048576}
       LEDGERFLOW_RATE_LIMIT_MAX: ${LEDGERFLOW_RATE_LIMIT_MAX:-300}
       LEDGERFLOW_RATE_LIMIT_WINDOW: ${LEDGERFLOW_RATE_LIMIT_WINDOW:-1 minute}
     volumes:
       - ledgerflow-data:/data
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ledgerflow
+      POSTGRES_USER: ledgerflow
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledgerflow -d ledgerflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - ledgerflow-postgres:/var/lib/postgresql/data
 
 volumes:
   ledgerflow-data:
+  ledgerflow-postgres:

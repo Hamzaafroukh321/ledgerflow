@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS simulation_runs_created_idx;
+DROP INDEX IF EXISTS subscriptions_customer_starts_idx;
+DROP INDEX IF EXISTS usage_events_customer_ts_idx;
+DROP TABLE IF EXISTS simulation_runs;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS usage_events;
+DROP TABLE IF EXISTS coupons;
+DROP TABLE IF EXISTS plans;
