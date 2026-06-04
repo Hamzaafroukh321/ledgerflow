@@ -11,6 +11,7 @@ import { defaultInvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
 import { allocateRefund } from "../refunds/allocate-refund.js";
 import { compareScenarios } from "../scenarios/compare.js";
+import { assertInvoiceFromFiles, formatAssertionReport } from "./assert.js";
 
 const program = new Command();
 
@@ -72,6 +73,21 @@ program
   .option("--pretty")
   .action((options: { invoice: string; pretty?: boolean }) => {
     writeJson(auditInvoice(readInvoiceInput(readJson(options.invoice))), options.pretty);
+  });
+
+program
+  .command("assert")
+  .description("Assert that a billing context produces an exact expected invoice")
+  .requiredOption("--context <file>")
+  .requiredOption("--expected <file>")
+  .action((options: { context: string; expected: string }) => {
+    const result = assertInvoiceFromFiles(options.context, options.expected);
+    if (result.matched) {
+      console.log(formatAssertionReport(result));
+      return;
+    }
+    console.error(formatAssertionReport(result));
+    process.exitCode = 1;
   });
 
 program
