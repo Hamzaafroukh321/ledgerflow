@@ -19,12 +19,32 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["**/*.ts"],
+    files: ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         project: "./tsconfig.json",
         tsconfigRootDir: rootDir,
+        sourceType: "module"
+      },
+      globals: globals.node
+    },
+    plugins: {
+      "@typescript-eslint": tsPlugin
+    },
+    rules: {
+      ...tsPlugin.configs["eslint-recommended"].overrides[0].rules,
+      ...tsPlugin.configs.strict.rules,
+      ...tsPlugin.configs.stylistic.rules,
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }]
+    }
+  },
+  {
+    files: ["scripts/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
         sourceType: "module"
       },
       globals: globals.node

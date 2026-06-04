@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
+    "bin": {
     "ledgerflow": "dist/cli/index.js"
   },
   "files": [
@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "bench": "tsx scripts/bench.ts",
     "coverage": "vitest run --coverage",
     "format": "prettier --check .",
     "lint": "eslint .",

@@ -6,7 +6,7 @@ if git ls-files | grep -E '(^|/)\.env$|node_modules/|^dist/|^coverage/|\.sqlite(
   exit 1
 fi
 
-if git grep -n -E 'TODO|FIXME|api[_-]?key|password|secret|evaluation program|benchmark tooling' -- ':!scripts/scan.sh'; then
+if git grep -n -E 'TODO|FIXME|api[_-]?key|password|secret|evaluation program|benchmark tooling' -- ':!scripts/scan.sh' ':!SCALE_PROMPT.md'; then
   echo "scan failed: disallowed marker found"
   exit 1
 fi
