@@ -1,0 +1,12 @@
+{
+  "components": {
+    "schemas": {}
+  },
+  "info": {
+    "description": "Deterministic billing simulation and invoice operations API.",
+    "title": "LedgerFlow API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {}
+}

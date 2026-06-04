@@ -1,0 +1,59 @@
+{
+  "creditsApplied": [
+    {
+      "amountMinor": -2900,
+      "id": "cr_large",
+      "phase": "post_tax"
+    }
+  ],
+  "currency": "USD",
+  "discounts": [],
+  "explanation": {
+    "children": [
+      {
+        "children": [],
+        "id": "subtotal",
+        "rule": "subtotal",
+        "total": 2900
+      },
+      {
+        "children": [],
+        "id": "discounts",
+        "rule": "discounts",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "credits",
+        "rule": "credits",
+        "total": -2900
+      },
+      {
+        "children": [],
+        "id": "tax",
+        "rule": "tax",
+        "total": 0
+      }
+    ],
+    "id": "root",
+    "rule": "invoice_total",
+    "total": 0
+  },
+  "lineItems": [
+    {
+      "amountMinor": 2900,
+      "currency": "USD",
+      "description": "Starter plan",
+      "id": "starter_base",
+      "traceId": "starter_base"
+    }
+  ],
+  "taxLines": [],
+  "totals": {
+    "creditTotal": -2900,
+    "discountTotal": 0,
+    "subtotal": 2900,
+    "tax": 0,
+    "total": 0
+  }
+}
