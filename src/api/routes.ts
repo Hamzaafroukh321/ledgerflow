@@ -19,7 +19,9 @@ import type { AsyncLedgerRepository, LedgerRepository } from "../data/repository
 import { scopeRepository } from "../data/scoped.js";
 import type { BillingContext } from "../engine/context.js";
 import type { ScenarioComparison, ScenarioInput, ScenarioResult } from "../scenarios/types.js";
+import { withIdempotency, type IdempotencyStore } from "./idempotency.js";
 import type { MembershipDirectory } from "./memberships.js";
+import { paginate } from "./pagination.js";
 
 type RouteRepository = LedgerRepository | AsyncLedgerRepository;
 
@@ -27,6 +29,7 @@ export interface RouteDeps {
   engine: InvoiceEngine;
   repository: RouteRepository;
   memberships: MembershipDirectory;
+  idempotency: IdempotencyStore;
   simulateWithEngine?: boolean;
   serveWeb?: boolean;
 }
@@ -170,14 +173,21 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       return reply;
     }
     const repository = await requestRepository(request, deps);
-    return await repository.plans.list();
+    const plans = await repository.plans.list();
+    return isVersionedApi(request) ? paginate(plans, request) : plans;
   });
 
-  server.post("/plans", async (request) => {
+  server.post("/plans", async (request, reply) => {
     const repository = await requestRepository(request, deps);
-    const plan = planSchema.parse(request.body) as Plan;
-    await repository.plans.save(plan);
-    return plan;
+    const result = await withIdempotency(request, deps.idempotency, async () => {
+      const plan = planSchema.parse(request.body) as Plan;
+      await repository.plans.save(plan);
+      return plan;
+    });
+    if (result.replayed) {
+      reply.header("idempotency-replayed", "true");
+    }
+    return result.response;
   });
 
   server.post("/invoices/simulate", async (request) =>
@@ -189,7 +199,8 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       return reply;
     }
     const repository = await requestRepository(request, deps);
-    return await repository.simulations.list();
+    const simulations = await repository.simulations.list();
+    return isVersionedApi(request) ? paginate(simulations, request) : simulations;
   });
 
   server.get("/simulations/:runId", async (request, reply) => {
@@ -208,21 +219,27 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     return run;
   });
 
-  server.post("/simulations", async (request) => {
+  server.post("/simulations", async (request, reply) => {
     const repository = await requestRepository(request, deps);
-    const body = simulationRunSchema.parse(request.body);
-    const context = BillingContextSchema.parse(body.context);
-    const invoice = await simulateInvoice(context, { ...deps, repository });
-    const runInput: Parameters<typeof createSimulationRun>[0] = { context, invoice };
-    if (body.id !== undefined) {
-      runInput.id = body.id;
+    const result = await withIdempotency(request, deps.idempotency, async () => {
+      const body = simulationRunSchema.parse(request.body);
+      const context = BillingContextSchema.parse(body.context);
+      const invoice = await simulateInvoice(context, { ...deps, repository });
+      const runInput: Parameters<typeof createSimulationRun>[0] = { context, invoice };
+      if (body.id !== undefined) {
+        runInput.id = body.id;
+      }
+      if (body.name !== undefined) {
+        runInput.name = body.name;
+      }
+      const run = createSimulationRun(runInput);
+      await repository.simulations.save(run);
+      return run;
+    });
+    if (result.replayed) {
+      reply.header("idempotency-replayed", "true");
     }
-    if (body.name !== undefined) {
-      runInput.name = body.name;
-    }
-    const run = createSimulationRun(runInput);
-    await repository.simulations.save(run);
-    return run;
+    return result.response;
   });
 
   server.post("/invoices/audit", async (request) => {
@@ -257,7 +274,8 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.get("/usage/events", async (request) => {
     const repository = await requestRepository(request, deps);
-    return await repository.usage.list();
+    const events = await repository.usage.list();
+    return isVersionedApi(request) ? paginate(events, request) : events;
   });
 
   server.post("/usage/aggregate", async (request) => {
@@ -290,7 +308,8 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       return reply;
     }
     const repository = await requestRepository(request, deps);
-    return await repository.customers.listCustomers();
+    const customers = await repository.customers.listCustomers();
+    return isVersionedApi(request) ? paginate(customers, request) : customers;
   });
 
   server.post("/customers", async (request) => {
@@ -357,7 +376,8 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.get("/memberships", async (request) => {
     const principal = request.principal ?? { tenantId: "default" };
-    return deps.memberships.list(principal.tenantId);
+    const memberships = deps.memberships.list(principal.tenantId);
+    return isVersionedApi(request) ? paginate(memberships, request) : memberships;
   });
 
   server.post("/memberships", async (request) => {
@@ -471,6 +491,10 @@ function serveWebRoute(request: FastifyRequest, reply: FastifyReply, deps: Route
   }
   reply.callNotFound();
   return true;
+}
+
+function isVersionedApi(request: FastifyRequest): boolean {
+  return request.url.startsWith("/v1/");
 }
 
 function cleanTaxProfile(input: {

@@ -23,6 +23,7 @@ import type {
   UsageRepository
 } from "../storage/repository.js";
 import { registerTokenAuth } from "./auth.js";
+import { MemoryIdempotencyStore, type IdempotencyStore } from "./idempotency.js";
 import { MemoryMembershipDirectory, type MembershipDirectory } from "./memberships.js";
 import { registerRbac } from "./rbac.js";
 import { registerRequestIds } from "./request-id.js";
@@ -40,6 +41,7 @@ export interface ServerDeps {
   customers?: CustomerRepository;
   simulations?: SimulationRunRepository;
   memberships?: MembershipDirectory;
+  idempotency?: IdempotencyStore;
 }
 
 export function buildServer(
@@ -88,6 +90,7 @@ export function buildServer(
       engine,
       repository,
       memberships: deps.memberships ?? defaults.memberships,
+      idempotency: deps.idempotency ?? defaults.idempotency,
       simulateWithEngine,
       serveWeb
     });
@@ -97,6 +100,7 @@ export function buildServer(
           engine,
           repository,
           memberships: deps.memberships ?? defaults.memberships,
+          idempotency: deps.idempotency ?? defaults.idempotency,
           simulateWithEngine,
           serveWeb: false
         });
@@ -159,7 +163,8 @@ export function createDefaultServerDeps(
       coupons: repository.coupons as never,
       customers: repository.customers as never,
       simulations: repository.simulations as never,
-      memberships: new MemoryMembershipDirectory()
+      memberships: new MemoryMembershipDirectory(),
+      idempotency: new MemoryIdempotencyStore()
     };
   }
 
@@ -176,7 +181,8 @@ export function createDefaultServerDeps(
       coupons: repository.coupons,
       customers: repository.customers,
       simulations: repository.simulations,
-      memberships: new MemoryMembershipDirectory()
+      memberships: new MemoryMembershipDirectory(),
+      idempotency: new MemoryIdempotencyStore()
     };
   }
 
@@ -191,7 +197,8 @@ export function createDefaultServerDeps(
     coupons: repository.coupons,
     customers: repository.customers,
     simulations: repository.simulations,
-    memberships: new MemoryMembershipDirectory()
+    memberships: new MemoryMembershipDirectory(),
+    idempotency: new MemoryIdempotencyStore()
   };
 }
 

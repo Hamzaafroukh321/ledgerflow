@@ -151,7 +151,7 @@ describe("api", () => {
       status: "ok"
     });
     expect(
-      (await server.inject({ method: "GET", url: "/v1/plans" })).json<Plan[]>().map((plan) => plan.id)
+      (await server.inject({ method: "GET", url: "/v1/plans" })).json<{ data: Plan[] }>().data.map((plan) => plan.id)
     ).toEqual(["pro_monthly", "starter_monthly"]);
     const simulated = await server.inject({
       method: "POST",
@@ -209,6 +209,124 @@ describe("api", () => {
         })
       ).statusCode
     ).toBe(200);
+
+    await server.close();
+  });
+
+  it("paginates v1 list endpoints with stable cursors and totals", async () => {
+    const server = buildServer();
+    const customPlan: Plan = {
+      id: "v1_page_plan",
+      name: "V1 Page Plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 1500
+        }
+      ]
+    };
+
+    await server.inject({ method: "POST", url: "/v1/plans", payload: customPlan });
+    const first = await server.inject({ method: "GET", url: "/v1/plans?limit=2" });
+    const firstBody = first.json<{
+      data: Plan[];
+      page: { limit: number; total: number; nextCursor: string | null };
+    }>();
+    const second = await server.inject({
+      method: "GET",
+      url: `/v1/plans?limit=2&cursor=${firstBody.page.nextCursor ?? ""}`
+    });
+    const secondBody = second.json<{
+      data: Plan[];
+      page: { limit: number; total: number; nextCursor: string | null };
+    }>();
+
+    expect(first.statusCode).toBe(200);
+    expect(firstBody.page).toMatchObject({ limit: 2, total: 3 });
+    expect(firstBody.data.map((plan) => plan.id)).toEqual(["pro_monthly", "starter_monthly"]);
+    expect(secondBody.page).toMatchObject({ limit: 2, total: 3, nextCursor: null });
+    expect(secondBody.data.map((plan) => plan.id)).toEqual(["v1_page_plan"]);
+
+    await server.close();
+  });
+
+  it("replays idempotent plan saves and rejects changed replays", async () => {
+    const server = buildServer();
+    const plan: Plan = {
+      id: "idem_plan",
+      name: "Idempotent Plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 900
+        }
+      ]
+    };
+
+    const first = await server.inject({
+      method: "POST",
+      url: "/v1/plans",
+      headers: { "idempotency-key": "plan-save-1" },
+      payload: plan
+    });
+    const replay = await server.inject({
+      method: "POST",
+      url: "/v1/plans",
+      headers: { "idempotency-key": "plan-save-1" },
+      payload: plan
+    });
+    const conflict = await server.inject({
+      method: "POST",
+      url: "/v1/plans",
+      headers: { "idempotency-key": "plan-save-1" },
+      payload: { ...plan, name: "Changed Plan" }
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.headers["idempotency-replayed"]).toBe("true");
+    expect(replay.json()).toEqual(first.json());
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json().error).toMatchObject({
+      code: "idempotency_conflict",
+      message: "Idempotency-Key was reused with a different request body."
+    });
+
+    await server.close();
+  });
+
+  it("replays idempotent simulation saves without creating duplicate runs", async () => {
+    const server = buildServer();
+    const payload = { name: "forecast", context };
+
+    const first = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { "idempotency-key": "simulation-save-1" },
+      payload
+    });
+    const replay = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { "idempotency-key": "simulation-save-1" },
+      payload
+    });
+    const list = await server.inject({ method: "GET", url: "/v1/simulations?limit=10" });
+
+    expect(first.statusCode).toBe(200);
+    expect(replay.headers["idempotency-replayed"]).toBe("true");
+    expect(replay.json()).toEqual(first.json());
+    expect(list.json<{ data: unknown[]; page: { total: number } }>().page.total).toBe(1);
 
     await server.close();
   });
