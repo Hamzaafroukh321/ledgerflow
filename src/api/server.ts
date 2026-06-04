@@ -74,6 +74,7 @@ export function buildServer(
     const engine = deps.engine ?? resolveRouteEngine(simulateWithEngine, defaults.engine, repository);
     registerTokenAuth(server, {
       token: env.LEDGERFLOW_API_TOKEN,
+      tokens: env.LEDGERFLOW_API_TOKENS,
       serveWeb,
       warnOpenMode: (message) => server.log.warn(message)
     });

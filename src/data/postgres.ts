@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -220,11 +220,15 @@ export class PostgresLedgerRepository implements AsyncLedgerRepository {
   };
 
   public async migrateUp(): Promise<void> {
-    await this.db.query(readMigration("001_initial.up.sql"));
+    for (const migration of readMigrationNames("up")) {
+      await this.db.query(readMigration(migration));
+    }
   }
 
   public async migrateDown(): Promise<void> {
-    await this.db.query(readMigration("001_initial.down.sql"));
+    for (const migration of readMigrationNames("down").reverse()) {
+      await this.db.query(readMigration(migration));
+    }
   }
 
   public async transaction<T>(work: (repository: AsyncLedgerRepository) => Promise<T>): Promise<T> {
@@ -262,7 +266,17 @@ export class PostgresLedgerRepository implements AsyncLedgerRepository {
 }
 
 function readMigration(name: string): string {
-  return readFileSync(join(dirname(fileURLToPath(import.meta.url)), "migrations", name), "utf8");
+  return readFileSync(join(migrationDirectory(), name), "utf8");
+}
+
+function readMigrationNames(direction: "up" | "down"): string[] {
+  return readdirSync(migrationDirectory())
+    .filter((name) => name.endsWith(`.${direction}.sql`))
+    .sort();
+}
+
+function migrationDirectory(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "migrations");
 }
 
 function jsonValue<T>(value: unknown): T {

@@ -10,8 +10,14 @@ export interface Principal {
 
 export interface TokenAuthOptions {
   token?: string | undefined;
+  tokens?: string | undefined;
   serveWeb?: boolean;
   warnOpenMode?: (message: string) => void;
+}
+
+interface TokenPrincipal {
+  token: string;
+  principal: Principal;
 }
 
 declare module "fastify" {
@@ -22,7 +28,8 @@ declare module "fastify" {
 
 export function registerTokenAuth(server: FastifyInstance, options: TokenAuthOptions): void {
   const token = options.token?.trim();
-  if (!token) {
+  const tokenMap = parseTokenMap(options.tokens);
+  if (!token && tokenMap.length === 0) {
     options.warnOpenMode?.("LEDGERFLOW_API_TOKEN is unset; API authentication is in open mode.");
     return;
   }
@@ -32,13 +39,47 @@ export function registerTokenAuth(server: FastifyInstance, options: TokenAuthOpt
       return;
     }
 
-    if (matchesToken(readRequestToken(request), token)) {
+    const requestToken = readRequestToken(request);
+    const mappedPrincipal = findMappedPrincipal(requestToken, tokenMap);
+    if (mappedPrincipal) {
+      request.principal = mappedPrincipal;
+      return;
+    }
+
+    if (token && matchesToken(requestToken, token)) {
       request.principal = { subject: "api-token", tenantId: "default", role: "admin" };
       return;
     }
 
     await sendUnauthorized(reply);
   });
+}
+
+function parseTokenMap(value: string | undefined): TokenPrincipal[] {
+  if (!value?.trim()) {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [token, tenantId, subject = "api-token"] = entry.split(":");
+      if (!token?.trim() || !tenantId?.trim()) {
+        throw new Error("LEDGERFLOW_API_TOKENS entries must use token:tenantId[:subject]");
+      }
+      return {
+        token: token.trim(),
+        principal: { subject: subject.trim(), tenantId: tenantId.trim(), role: "admin" }
+      };
+    });
+}
+
+function findMappedPrincipal(
+  token: string | undefined,
+  principals: TokenPrincipal[]
+): Principal | undefined {
+  return principals.find((entry) => matchesToken(token, entry.token))?.principal;
 }
 
 function isPublicRequest(request: FastifyRequest, options: TokenAuthOptions): boolean {

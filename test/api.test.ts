@@ -553,4 +553,86 @@ describe("api", () => {
     expect(deps.repository).toBeInstanceOf(PostgresLedgerRepository);
     await deps.repository.close();
   });
+
+  it("isolates tenant-owned plans and saved simulations by token principal", async () => {
+    const server = buildServer(
+      {},
+      { LEDGERFLOW_API_TOKENS: "token-a:tenant-a:user-a,token-b:tenant-b:user-b" }
+    );
+    const tenantA = { authorization: "Bearer token-a" };
+    const tenantB = { authorization: "Bearer token-b" };
+    const privatePlan: Plan = {
+      id: "private_plan",
+      name: "Tenant A plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 1234
+        }
+      ]
+    };
+
+    expect(
+      (await server.inject({ method: "POST", url: "/plans", headers: tenantA, payload: privatePlan }))
+        .statusCode
+    ).toBe(200);
+
+    const plansA = (
+      await server.inject({ method: "GET", url: "/plans", headers: tenantA })
+    ).json<Plan[]>();
+    const plansB = (
+      await server.inject({ method: "GET", url: "/plans", headers: tenantB })
+    ).json<Plan[]>();
+    expect(plansA.map((plan) => plan.id)).toContain("private_plan");
+    expect(plansB.map((plan) => plan.id)).not.toContain("private_plan");
+
+    const privateContext = {
+      ...context,
+      subscription: { planId: "private_plan", seats: 1, changedOn: null }
+    };
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/invoices/simulate",
+          headers: tenantA,
+          payload: privateContext
+        })
+      ).statusCode
+    ).toBe(200);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/invoices/simulate",
+          headers: tenantB,
+          payload: privateContext
+        })
+      ).statusCode
+    ).toBe(404);
+
+    const saved = await server.inject({
+      method: "POST",
+      url: "/simulations",
+      headers: tenantA,
+      payload: { id: "private_sim", name: "Tenant A simulation", context: privateContext }
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(
+      (await server.inject({ method: "GET", url: "/simulations/private_sim", headers: tenantB }))
+        .statusCode
+    ).toBe(404);
+    expect(
+      (
+        await server.inject({ method: "GET", url: "/simulations", headers: tenantB })
+      ).json<unknown[]>()
+    ).toEqual([]);
+
+    await server.close();
+  });
 });
