@@ -71,6 +71,24 @@ describe("ScenarioPage", () => {
     expect(await screen.findByText(/unexpected token/i)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("renders API comparison failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: { code: "validation_error", message: "Bad scenario" } }), {
+          status: 400,
+          statusText: "Bad Request"
+        })
+      )
+    );
+    renderScenarios();
+
+    await user.click(screen.getByRole("button", { name: /compare scenarios/i }));
+
+    expect(await screen.findByText(/validation_error: Bad scenario/i)).toBeInTheDocument();
+  });
 });
 
 function invoice(total: number) {

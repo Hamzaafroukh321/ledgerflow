@@ -40,6 +40,23 @@ describe("SimulatorPage", () => {
     });
   });
 
+  it("omits blank optional adjustments from generated contexts", () => {
+    expect(
+      buildBillingContext({
+        currency: "USD",
+        customerId: "cus_1",
+        jurisdiction: "US-CA",
+        planId: "starter_monthly",
+        seats: 1,
+        periodStart: "2026-01-01",
+        periodEnd: "2026-02-01",
+        apiCalls: 0,
+        couponCode: "",
+        creditMajor: ""
+      })
+    ).toMatchObject({ coupons: [], credits: [] });
+  });
+
   it("shows validation errors for invalid required values", async () => {
     const user = userEvent.setup();
     renderSimulator();
@@ -87,5 +104,23 @@ describe("SimulatorPage", () => {
     expect(await screen.findByText("Base subscription")).toBeInTheDocument();
     expect(screen.getAllByText("$99.00").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /collapse invoice_total/i })).toBeInTheDocument();
+  });
+
+  it("renders typed API failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: { code: "unauthorized", message: "Token required" } }), {
+          status: 401,
+          statusText: "Unauthorized"
+        })
+      )
+    );
+    renderSimulator();
+
+    await user.click(screen.getByRole("button", { name: /simulate invoice/i }));
+
+    expect(await screen.findByText(/unauthorized: Token required/i)).toBeInTheDocument();
   });
 });

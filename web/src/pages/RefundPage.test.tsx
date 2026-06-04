@@ -61,4 +61,22 @@ describe("RefundPage", () => {
     expect(await screen.findByText(/unexpected token/i)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("renders API error envelopes", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: { code: "domain_error", message: "Too much" } }), {
+          status: 400,
+          statusText: "Bad Request"
+        })
+      )
+    );
+    renderRefunds();
+
+    await user.click(screen.getByRole("button", { name: /simulate refund/i }));
+
+    expect(await screen.findByText(/domain_error: Too much/i)).toBeInTheDocument();
+  });
 });
