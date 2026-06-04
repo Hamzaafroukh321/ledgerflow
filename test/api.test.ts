@@ -11,6 +11,7 @@ import {
   MemoryCouponRepository,
   MemoryLedgerRepository,
   MemoryPlanRepository,
+  PostgresLedgerRepository,
   SqliteLedgerRepository,
   type BillingContext,
   type Invoice,
@@ -544,5 +545,12 @@ describe("api", () => {
     const deps = createDefaultServerDeps({});
 
     expect(deps.repository).toBeInstanceOf(MemoryLedgerRepository);
+  });
+
+  it("selects postgres repositories when LEDGERFLOW_DB_URL is configured", async () => {
+    const deps = createDefaultServerDeps({ LEDGERFLOW_DB_URL: "postgres://localhost/ledgerflow" });
+
+    expect(deps.repository).toBeInstanceOf(PostgresLedgerRepository);
+    await deps.repository.close();
   });
 });

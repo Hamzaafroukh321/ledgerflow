@@ -8,10 +8,11 @@ import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 
-import { seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
+import { DEFAULT_COUPONS, DEFAULT_PLANS, seedDefaultCoupons, seedDefaultPlans } from "../catalog/defaults.js";
 import type { CustomerRepository } from "../customers/repository.js";
 import { MemoryLedgerRepository } from "../data/memory.js";
-import type { LedgerRepository } from "../data/repository.js";
+import { PostgresLedgerRepository } from "../data/postgres.js";
+import type { AsyncLedgerRepository, LedgerRepository } from "../data/repository.js";
 import { SqliteLedgerRepository } from "../data/sqlite.js";
 import { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import { registerErrorHandler } from "../errors/handler.js";
@@ -25,10 +26,11 @@ import { registerTokenAuth } from "./auth.js";
 import { registerRoutes } from "./routes.js";
 
 const rateLimitPlugin = rateLimit as unknown as FastifyPluginCallback<RateLimitPluginOptions>;
+type RouteRepository = LedgerRepository | AsyncLedgerRepository;
 
 export interface ServerDeps {
   engine?: InvoiceEngine;
-  repository?: LedgerRepository;
+  repository?: RouteRepository;
   plans?: PlanRepository;
   usage?: UsageRepository;
   coupons?: CouponRepository;
@@ -65,9 +67,11 @@ export function buildServer(
   });
   void server.register(swaggerUi, { routePrefix: "/docs" });
   registerErrorHandler(server);
-  server.after(() => {
+  server.after(async () => {
+    await prepareRepository(defaults.repository);
     const repository = resolveRouteRepository(deps, defaults.repository);
-    const engine = deps.engine ?? resolveRouteEngine(deps, defaults.engine, repository);
+    const simulateWithEngine = shouldUseFallbackEngine(deps);
+    const engine = deps.engine ?? resolveRouteEngine(simulateWithEngine, defaults.engine, repository);
     registerTokenAuth(server, {
       token: env.LEDGERFLOW_API_TOKEN,
       serveWeb,
@@ -76,6 +80,7 @@ export function buildServer(
     registerRoutes(server, {
       engine,
       repository,
+      simulateWithEngine,
       serveWeb
     });
     server.get("/openapi.json", async () => server.swagger());
@@ -109,13 +114,27 @@ function readPositiveInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function closeServerDeps(deps: Required<ServerDeps>): void {
-  deps.repository.close();
+async function closeServerDeps(deps: Required<ServerDeps>): Promise<void> {
+  await deps.repository.close();
 }
 
 export function createDefaultServerDeps(
   env: Record<string, string | undefined> = process.env
 ): Required<ServerDeps> {
+  const dbUrl = env.LEDGERFLOW_DB_URL;
+  if (dbUrl) {
+    const repository = PostgresLedgerRepository.fromUrl(dbUrl);
+    return {
+      engine: new InvoiceEngine(),
+      repository,
+      plans: repository.plans as never,
+      usage: repository.usage as never,
+      coupons: repository.coupons as never,
+      customers: repository.customers as never,
+      simulations: repository.simulations as never
+    };
+  }
+
   const dbPath = env.LEDGERFLOW_DB;
   if (dbPath) {
     const repository = new SqliteLedgerRepository(dbPath);
@@ -146,26 +165,31 @@ export function createDefaultServerDeps(
   };
 }
 
-function resolveRouteRepository(deps: ServerDeps, fallback: LedgerRepository): LedgerRepository {
+function resolveRouteRepository(deps: ServerDeps, fallback: RouteRepository): RouteRepository {
   if (deps.repository) {
     return deps.repository;
   }
-  return {
+  const repository = {
     plans: deps.plans ?? fallback.plans,
     usage: deps.usage ?? fallback.usage,
     coupons: deps.coupons ?? fallback.coupons,
     customers: deps.customers ?? fallback.customers,
     simulations: deps.simulations ?? fallback.simulations,
-    transaction: (work) => work(),
+    transaction: <T>(work: () => T): T => work(),
     close: () => undefined
   };
+  return repository as RouteRepository;
 }
 
 function resolveRouteEngine(
-  deps: ServerDeps,
+  useFallback: boolean,
   fallback: InvoiceEngine,
-  repository: LedgerRepository
+  repository: RouteRepository
 ): InvoiceEngine {
+  return useFallback ? fallback : new InvoiceEngine(repository.plans as never, repository.coupons as never);
+}
+
+function shouldUseFallbackEngine(deps: ServerDeps): boolean {
   const hasPartialRepositoryOverrides =
     !deps.repository &&
     (deps.plans !== undefined ||
@@ -173,7 +197,21 @@ function resolveRouteEngine(
       deps.coupons !== undefined ||
       deps.customers !== undefined ||
       deps.simulations !== undefined);
-  return hasPartialRepositoryOverrides
-    ? fallback
-    : new InvoiceEngine(repository.plans, repository.coupons);
+  return hasPartialRepositoryOverrides;
+}
+
+async function prepareRepository(repository: RouteRepository): Promise<void> {
+  if (repository instanceof PostgresLedgerRepository) {
+    await repository.migrateUp();
+  }
+  for (const plan of Object.values(DEFAULT_PLANS)) {
+    if (!(await repository.plans.get(plan.id))) {
+      await repository.plans.save(plan);
+    }
+  }
+  for (const coupon of Object.values(DEFAULT_COUPONS)) {
+    if (!(await repository.coupons.get(coupon.code))) {
+      await repository.coupons.save(coupon);
+    }
+  }
 }

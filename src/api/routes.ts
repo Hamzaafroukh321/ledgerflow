@@ -4,7 +4,7 @@ import { z } from "zod";
 import { allocateRefund } from "../refunds/allocate-refund.js";
 import type { Plan } from "../plans/types.js";
 import { UsageEventSchema } from "./schemas.js";
-import type { InvoiceEngine } from "../engine/InvoiceEngine.js";
+import { InvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
 import { validateCoupon } from "../discounts/coupon.js";
 import { aggregateUsage } from "../usage/aggregate.js";
@@ -14,11 +14,16 @@ import { compareScenarios } from "../scenarios/compare.js";
 import { createSimulationRun } from "../simulations/runs.js";
 import type { TaxProfile } from "../tax/types.js";
 import { BillingContextSchema } from "../engine/context.js";
-import type { LedgerRepository } from "../data/repository.js";
+import type { AsyncLedgerRepository, LedgerRepository } from "../data/repository.js";
+import type { BillingContext } from "../engine/context.js";
+import type { ScenarioComparison, ScenarioInput, ScenarioResult } from "../scenarios/types.js";
+
+type RouteRepository = LedgerRepository | AsyncLedgerRepository;
 
 export interface RouteDeps {
   engine: InvoiceEngine;
-  repository: LedgerRepository;
+  repository: RouteRepository;
+  simulateWithEngine?: boolean;
   serveWeb?: boolean;
 }
 
@@ -154,27 +159,27 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     if (serveWebRoute(request, reply, deps)) {
       return reply;
     }
-    return deps.repository.plans.list();
+    return await deps.repository.plans.list();
   });
 
   server.post("/plans", async (request) => {
     const plan = planSchema.parse(request.body) as Plan;
-    deps.repository.plans.save(plan);
+    await deps.repository.plans.save(plan);
     return plan;
   });
 
-  server.post("/invoices/simulate", async (request) => deps.engine.simulate(request.body));
+  server.post("/invoices/simulate", async (request) => simulateInvoice(request.body, deps));
 
   server.get("/simulations", async (request, reply) => {
     if (serveWebRoute(request, reply, deps)) {
       return reply;
     }
-    return deps.repository.simulations.list();
+    return await deps.repository.simulations.list();
   });
 
   server.get("/simulations/:runId", async (request, reply) => {
     const params = z.object({ runId: z.string() }).parse(request.params);
-    const run = deps.repository.simulations.get(params.runId);
+    const run = await deps.repository.simulations.get(params.runId);
     if (!run) {
       return reply.status(404).send({
         error: { code: "not_found", message: `Simulation run not found: ${params.runId}` }
@@ -186,7 +191,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
   server.post("/simulations", async (request) => {
     const body = simulationRunSchema.parse(request.body);
     const context = BillingContextSchema.parse(body.context);
-    const invoice = deps.engine.simulate(context);
+    const invoice = await simulateInvoice(context, deps);
     const runInput: Parameters<typeof createSimulationRun>[0] = { context, invoice };
     if (body.id !== undefined) {
       runInput.id = body.id;
@@ -195,7 +200,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       runInput.name = body.name;
     }
     const run = createSimulationRun(runInput);
-    deps.repository.simulations.save(run);
+    await deps.repository.simulations.save(run);
     return run;
   });
 
@@ -206,35 +211,38 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
 
   server.post("/scenarios/compare", async (request) => {
     const body = scenarioComparisonSchema.parse(request.body);
-    return compareScenarios(
-      { name: body.baseline.name, context: body.baseline.context },
-      body.candidates.map((candidate) => ({ name: candidate.name, context: candidate.context })),
-      deps.engine
-    );
+    const baseline = { name: body.baseline.name, context: body.baseline.context };
+    const candidates = body.candidates.map((candidate) => ({
+      name: candidate.name,
+      context: candidate.context
+    }));
+    return deps.simulateWithEngine
+      ? compareScenarios(baseline, candidates, deps.engine)
+      : await compareScenariosWithRepository(baseline, candidates, deps);
   });
 
   server.post("/usage/events", async (request, reply) => {
     const event = UsageEventSchema.parse(request.body);
-    const result = deps.repository.usage.ingest(event);
+    const result = await deps.repository.usage.ingest(event);
     if (!result.accepted) {
       return reply.status(409).send(result);
     }
     return result;
   });
 
-  server.get("/usage/events", async () => deps.repository.usage.list());
+  server.get("/usage/events", async () => await deps.repository.usage.list());
 
   server.post("/usage/aggregate", async (request) => {
     const body = usageAggregateSchema.parse(request.body);
-    const events = deps.repository.usage
-      .list()
-      .filter((event) => !body.customerId || event.customerId === body.customerId);
+    const events = (await deps.repository.usage.list()).filter(
+      (event) => !body.customerId || event.customerId === body.customerId
+    );
     return Object.fromEntries(aggregateUsage(events, body.period));
   });
 
   server.post("/coupons/validate", async (request, reply) => {
     const body = validateCouponSchema.parse(request.body);
-    const coupon = deps.repository.coupons.get(body.code);
+    const coupon = await deps.repository.coupons.get(body.code);
     if (!coupon) {
       return reply.status(404).send({
         error: { code: "not_found", message: `Coupon not found: ${body.code}` }
@@ -247,7 +255,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     if (serveWebRoute(request, reply, deps)) {
       return reply;
     }
-    return deps.repository.customers.listCustomers();
+    return await deps.repository.customers.listCustomers();
   });
 
   server.post("/customers", async (request) => {
@@ -264,7 +272,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       customerInput.metadata = body.metadata;
     }
     const customer = createCustomer(customerInput);
-    deps.repository.customers.saveCustomer(customer);
+    await deps.repository.customers.saveCustomer(customer);
     return customer;
   });
 
@@ -280,14 +288,14 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
       assignmentInput.endsOn = body.endsOn;
     }
     const assignment = assignSubscription(assignmentInput);
-    deps.repository.customers.saveSubscription(assignment);
+    await deps.repository.customers.saveSubscription(assignment);
     return assignment;
   });
 
   server.get("/customers/:customerId/billing-profile", async (request, reply) => {
     const params = z.object({ customerId: z.string() }).parse(request.params);
     const query = billingProfileSchema.parse(request.query);
-    const customer = deps.repository.customers.getCustomer(params.customerId);
+    const customer = await deps.repository.customers.getCustomer(params.customerId);
     if (!customer) {
       return reply.status(404).send({
         error: { code: "not_found", message: `Customer not found: ${params.customerId}` }
@@ -295,7 +303,7 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     }
     return resolveBillingProfile(
       customer,
-      deps.repository.customers.listSubscriptions(params.customerId),
+      await deps.repository.customers.listSubscriptions(params.customerId),
       query.onDate
     );
   });
@@ -304,6 +312,73 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     const body = refundSchema.parse(request.body);
     return allocateRefund(body.invoice as Invoice, body.amountMinor, body.strategy);
   });
+}
+
+async function simulateInvoice(input: unknown, deps: RouteDeps): Promise<Invoice> {
+  if (deps.simulateWithEngine) {
+    return deps.engine.simulate(input);
+  }
+  const context = BillingContextSchema.parse(input);
+  const plan = await deps.repository.plans.get(context.subscription.planId);
+  if (!plan) {
+    throw new Error(`Plan not found: ${context.subscription.planId}`);
+  }
+  const coupons = Object.fromEntries(
+    await Promise.all(
+      context.coupons.map(async (code) => {
+        const coupon = await deps.repository.coupons.get(code);
+        if (!coupon) {
+          throw new Error(`Coupon not found: ${code}`);
+        }
+        return [coupon.code, coupon] as const;
+      })
+    )
+  );
+  return new InvoiceEngine({ [plan.id]: plan }, coupons).simulate(context);
+}
+
+async function compareScenariosWithRepository(
+  baseline: ScenarioInput,
+  candidates: ScenarioInput[],
+  deps: RouteDeps
+): Promise<ScenarioComparison> {
+  if (candidates.length === 0) {
+    throw new Error("Scenario comparison requires at least one candidate");
+  }
+  const baselineResult = await simulateScenarioWithRepository(baseline, deps);
+  const candidateResults = await Promise.all(
+    candidates.map((candidate) => simulateScenarioWithRepository(candidate, deps))
+  );
+  return {
+    baseline: baselineResult,
+    candidates: candidateResults,
+    deltas: candidateResults.map((candidate) => ({
+      from: baselineResult.name,
+      to: candidate.name,
+      subtotalDelta: candidate.invoice.totals.subtotal - baselineResult.invoice.totals.subtotal,
+      discountDelta:
+        candidate.invoice.totals.discountTotal - baselineResult.invoice.totals.discountTotal,
+      creditDelta: candidate.invoice.totals.creditTotal - baselineResult.invoice.totals.creditTotal,
+      taxDelta: candidate.invoice.totals.tax - baselineResult.invoice.totals.tax,
+      totalDelta: candidate.invoice.totals.total - baselineResult.invoice.totals.total
+    }))
+  };
+}
+
+async function simulateScenarioWithRepository(
+  input: ScenarioInput,
+  deps: RouteDeps
+): Promise<ScenarioResult> {
+  if (!input.name.trim()) {
+    throw new Error("Scenario name is required");
+  }
+  const context: BillingContext = BillingContextSchema.parse(input.context);
+  const invoice = await simulateInvoice(context, deps);
+  return {
+    name: input.name,
+    invoice,
+    audit: auditInvoice(invoice)
+  };
 }
 
 function serveWebRoute(request: FastifyRequest, reply: FastifyReply, deps: RouteDeps): boolean {
