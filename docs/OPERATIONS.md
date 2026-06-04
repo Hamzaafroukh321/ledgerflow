@@ -29,6 +29,16 @@ The full verifier runs root lint/typecheck/tests/build, scan and smoke scripts t
 
 Compose sets `LEDGERFLOW_DB=/data/ledgerflow.sqlite` and serves the built frontend from `/app/web/dist`.
 
+## Hosted API Token
+
+Set `LEDGERFLOW_API_TOKEN` in hosted or shared environments to require a token
+on operational API routes. Clients can send either `Authorization: Bearer
+<token>` or `x-ledgerflow-token: <token>`. Health checks, Swagger UI,
+`/openapi.json`, and static web assets remain public.
+
+The browser console can send the same header when it is built with
+`VITE_LEDGERFLOW_API_TOKEN`, or custom clients can pass the token explicitly.
+
 ## Persistence
 
 SQLite-backed repositories are enabled only when `LEDGERFLOW_DB` is set. The default in-memory mode is useful for tests and demos. Docker Compose mounts `ledgerflow-data` at `/data`, so usage events, plans, and coupons survive container restarts.

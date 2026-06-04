@@ -31,6 +31,7 @@ import {
   SqliteSimulationRunRepository,
   SqliteUsageRepository
 } from "../storage/sqlite.js";
+import { registerTokenAuth } from "./auth.js";
 import { registerRoutes } from "./routes.js";
 
 export interface ServerDeps {
@@ -49,6 +50,7 @@ export function buildServer(
   const defaults = createDefaultServerDeps(env);
   const server = Fastify({ logger: false });
   const webRoot = resolveWebRoot(env);
+  const serveWeb = webRoot !== undefined;
   server.addHook("onClose", async () => closeServerDeps(defaults));
   void server.register(cors, { origin: true });
   void server.register(swagger, {
@@ -62,6 +64,7 @@ export function buildServer(
   });
   void server.register(swaggerUi, { routePrefix: "/docs" });
   registerErrorHandler(server);
+  registerTokenAuth(server, { token: env.LEDGERFLOW_API_TOKEN, serveWeb });
   registerRoutes(server, {
     engine: deps.engine ?? defaults.engine,
     plans: deps.plans ?? defaults.plans,
@@ -69,7 +72,7 @@ export function buildServer(
     coupons: deps.coupons ?? defaults.coupons,
     customers: deps.customers ?? defaults.customers,
     simulations: deps.simulations ?? defaults.simulations,
-    serveWeb: webRoot !== undefined
+    serveWeb
   });
   server.get("/openapi.json", async () => server.swagger());
   if (webRoot) {

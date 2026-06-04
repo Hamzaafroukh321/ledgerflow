@@ -160,6 +160,66 @@ describe("api", () => {
     await server.close();
   });
 
+  it("requires a configured API token on operational routes", async () => {
+    const webRoot = mkdtempSync(join(tmpdir(), "ledgerflow-web-"));
+    writeFileSync(join(webRoot, "index.html"), "<!doctype html><title>LedgerFlow UI</title>");
+    const server = buildServer(
+      {},
+      {
+        LEDGERFLOW_API_TOKEN: "fixture-token",
+        LEDGERFLOW_SERVE_WEB: "1",
+        LEDGERFLOW_WEB_ROOT: webRoot
+      }
+    );
+
+    const health = await server.inject({ method: "GET", url: "/health" });
+    const docs = await server.inject({ method: "GET", url: "/docs" });
+    const webRoute = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { accept: "text/html" }
+    });
+    const missingToken = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { accept: "application/json" }
+    });
+    const wrongToken = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { "x-ledgerflow-token": "wrong" }
+    });
+    const bearerToken = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { authorization: "Bearer fixture-token" }
+    });
+    const headerToken = await server.inject({
+      method: "POST",
+      url: "/invoices/simulate",
+      headers: { "x-ledgerflow-token": "fixture-token" },
+      payload: context
+    });
+
+    expect(health.statusCode).toBe(200);
+    expect(docs.statusCode).toBeLessThan(400);
+    expect(webRoute.statusCode).toBe(200);
+    expect(webRoute.body).toContain("LedgerFlow UI");
+    expect(missingToken.statusCode).toBe(401);
+    expect(missingToken.json()).toEqual({
+      error: {
+        code: "unauthorized",
+        message: "A valid LedgerFlow API token is required."
+      }
+    });
+    expect(wrongToken.statusCode).toBe(401);
+    expect(bearerToken.statusCode).toBe(200);
+    expect(headerToken.statusCode).toBe(200);
+
+    await server.close();
+    rmSync(webRoot, { recursive: true, force: true });
+  });
+
   it("does not serve the web app unless static hosting is enabled", async () => {
     const server = buildServer();
 

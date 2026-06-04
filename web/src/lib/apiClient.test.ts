@@ -62,6 +62,24 @@ describe("api client", () => {
     );
   });
 
+  it("sends an API token header when configured", async () => {
+    const fetchImpl = vi.fn(async () =>
+      response([
+        { id: "pro_monthly", name: "Pro", type: "per_seat", currency: "USD", components: [] }
+      ])
+    );
+    const client = createApiClient({ apiToken: "fixture-token", fetchImpl });
+
+    await client.listPlans();
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.stringMatching(/\/plans$/),
+      expect.objectContaining({
+        headers: expect.objectContaining({ "x-ledgerflow-token": "fixture-token" })
+      })
+    );
+  });
+
   it("turns error envelopes into typed ApiError instances", async () => {
     const fetchImpl = vi.fn(async () =>
       response({ error: { code: "not_found", message: "Missing plan" } }, { status: 404 })

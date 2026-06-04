@@ -37,17 +37,20 @@ export class ApiError extends Error {
 export interface ApiClientOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  apiToken?: string;
 }
 
 export function createApiClient(options: ApiClientOptions = {}) {
   const baseUrl = options.baseUrl ?? import.meta.env.VITE_LEDGERFLOW_API_BASE ?? "";
   const fetchImpl = options.fetchImpl;
+  const apiToken = options.apiToken ?? import.meta.env.VITE_LEDGERFLOW_API_TOKEN;
 
   async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
     const response = await (fetchImpl ?? fetch)(toRequestUrl(baseUrl, path), {
       ...init,
       headers: {
         "content-type": "application/json",
+        ...authHeader(apiToken),
         ...init?.headers
       }
     });
@@ -137,6 +140,10 @@ export function createApiClient(options: ApiClientOptions = {}) {
     simulateRefund: (input: unknown) =>
       request("/refunds/simulate", refundResultSchema, body("POST", input))
   };
+}
+
+function authHeader(apiToken: string | undefined): Record<string, string> {
+  return apiToken ? { "x-ledgerflow-token": apiToken } : {};
 }
 
 export const apiClient = createApiClient();

@@ -8,6 +8,20 @@ node dist/cli/index.js serve --port 3000
 curl http://127.0.0.1:3000/openapi.json
 ```
 
+## Authentication
+
+Local development runs without authentication by default. For hosted or shared
+environments, set `LEDGERFLOW_API_TOKEN` before starting the server:
+
+```sh
+LEDGERFLOW_API_TOKEN=change-me node dist/cli/index.js serve --port 3000
+```
+
+When this variable is set, operational API routes require either
+`Authorization: Bearer <token>` or `x-ledgerflow-token: <token>`.
+`GET /health`, `/docs`, `/openapi.json`, and static web assets remain public so
+load balancers, documentation, and the web shell can load normally.
+
 ## `GET /health`
 
 Returns `{ "status": "ok" }`.
