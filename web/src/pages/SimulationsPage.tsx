@@ -3,13 +3,13 @@ import { useMemo, useState } from "react";
 import { InvoiceView } from "../components/InvoiceView";
 import { TraceTree } from "../components/TraceTree";
 import { FieldRow } from "../components/forms/FieldRow";
-import { useCreateSimulation, useSimulations } from "../hooks/useSimulations";
+import { useCreateSimulation, useSimulation, useSimulationsPage } from "../hooks/useSimulations";
 import { ApiError } from "../lib/apiClient";
 import { buildBillingContext, defaultSimulatorValues } from "../lib/simulator";
 import type { SimulationRun } from "../lib/schemas";
 
 export function SimulationsPage() {
-  const simulations = useSimulations();
+  const simulations = useSimulationsPage();
   const createSimulation = useCreateSimulation();
   const defaultContext = useMemo(() => buildBillingContext(defaultSimulatorValues), []);
   const [name, setName] = useState("Monthly invoice review");
@@ -17,8 +17,11 @@ export function SimulationsPage() {
   const [selectedId, setSelectedId] = useState<string>();
   const [parseError, setParseError] = useState<string>();
 
-  const runs = simulations.data ?? [];
-  const selectedRun = runs.find((run) => run.id === selectedId) ?? runs[0];
+  const runs = simulations.data?.data ?? [];
+  const selectedListRun = runs.find((run) => run.id === selectedId) ?? runs[0];
+  const detail = useSimulation(selectedId ?? selectedListRun?.id);
+  const selectedRun = detail.data ?? selectedListRun;
+  const totalRuns = simulations.data?.page.total ?? runs.length;
 
   function saveRun() {
     setParseError(undefined);
@@ -48,7 +51,7 @@ export function SimulationsPage() {
             Save generated invoices with their source billing context for review and comparison.
           </p>
         </div>
-        <span className="text-sm font-medium text-slate-500">{runs.length} runs</span>
+        <span className="text-sm font-medium text-slate-500">{totalRuns} runs</span>
       </div>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
@@ -84,7 +87,7 @@ export function SimulationsPage() {
 
         <aside className="space-y-3">
           <div className="flex items-end justify-between gap-3">
-            <h2 className="font-semibold text-slate-950">Run history</h2>
+            <h2 className="font-semibold text-slate-950">Simulation library</h2>
             {simulations.isLoading ? (
               <span className="text-sm text-slate-500">Loading...</span>
             ) : null}
@@ -105,12 +108,48 @@ export function SimulationsPage() {
               />
             ))}
           </div>
+          <div className="flex gap-2">
+            <button
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
+              type="button"
+              onClick={() => simulations.setCursor(undefined)}
+            >
+              First page
+            </button>
+            <button
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+              disabled={!simulations.nextCursor}
+              type="button"
+              onClick={() => simulations.setCursor(simulations.nextCursor ?? undefined)}
+            >
+              Next page
+            </button>
+          </div>
         </aside>
       </section>
 
       {selectedRun ? (
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_28rem]">
-          <InvoiceView invoice={selectedRun.invoice} />
+          <div className="space-y-4">
+            <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-semibold text-slate-950">Selected run</h2>
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt className="text-slate-500">Run</dt>
+                  <dd className="font-medium">{selectedRun.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Customer</dt>
+                  <dd className="font-medium">{selectedRun.context.customer.id}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">Plan</dt>
+                  <dd className="font-medium">{selectedRun.context.subscription.planId}</dd>
+                </div>
+              </dl>
+            </div>
+            <InvoiceView invoice={selectedRun.invoice} />
+          </div>
           <TraceTree
             currency={selectedRun.invoice.currency}
             trace={selectedRun.invoice.explanation}

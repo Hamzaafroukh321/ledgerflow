@@ -55,7 +55,7 @@ Under `/v1`, list routes return a page envelope:
 }
 ```
 
-Use `?limit=25` to set the page size, up to 100. When `nextCursor` is not null, pass it back as `?cursor=<value>` to fetch the next stable page. This envelope applies to `GET /v1/plans`, `GET /v1/simulations`, `GET /v1/usage/events`, `GET /v1/customers`, and `GET /v1/memberships`.
+Use `?limit=25` to set the page size, up to 100. When `nextCursor` is not null, pass it back as `?cursor=<value>` to fetch the next stable page. This envelope applies to `GET /v1/plans`, `GET /v1/coupons`, `GET /v1/simulations`, `GET /v1/usage/events`, `GET /v1/customers`, and `GET /v1/memberships`.
 
 ## `POST /plans`
 
@@ -92,6 +92,10 @@ Accepts `{ "customerId": "cus_1", "period": { "start": "2025-01-01", "end": "202
 ## `POST /coupons/validate`
 
 Accepts `{ "code": "SAVE20", "context": {} }` and returns coupon validity.
+
+## `GET /coupons`
+
+Returns tenant-scoped coupon definitions. Under `/v1`, this route returns the standard page envelope.
 
 ## `POST /refunds/simulate`
 

@@ -9,6 +9,15 @@
   },
   "openapi": "3.0.3",
   "paths": {
+    "/coupons": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/coupons/validate": {
       "post": {
         "responses": {
@@ -219,6 +228,15 @@
         }
       },
       "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/coupons": {
+      "get": {
         "responses": {
           "200": {
             "description": "Default Response"

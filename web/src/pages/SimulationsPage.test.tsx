@@ -35,6 +35,14 @@ function renderSimulations() {
   );
 }
 
+function page<T>(data: T[]) {
+  return { data, page: { limit: 25, total: data.length, nextCursor: null } };
+}
+
+function pageWithCursor<T>(data: T[], nextCursor: string | null) {
+  return { data, page: { limit: 25, total: 2, nextCursor } };
+}
+
 describe("SimulationsPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -43,21 +51,22 @@ describe("SimulationsPage", () => {
   it("lists saved simulations and selects a run", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              run("sim_1", "January review", "2026-01-02T00:00:00.000Z", 2900),
-              run("sim_2", "February review", "2026-02-02T00:00:00.000Z", 5400)
-            ])
-          )
-      )
+      vi.fn(async (input: RequestInfo | URL) => {
+        const runs = [
+          run("sim_1", "January review", "2026-01-02T00:00:00.000Z", 2900),
+          run("sim_2", "February review", "2026-02-02T00:00:00.000Z", 5400)
+        ];
+        const path = new URL(String(input), window.location.origin).pathname;
+        return new Response(
+          JSON.stringify(path.includes("sim_2") ? runs[1] : path.includes("sim_1") ? runs[0] : page(runs))
+        );
+      })
     );
 
     renderSimulations();
 
-    expect(await screen.findByText("January review")).toBeInTheDocument();
-    expect(screen.getByText("February review")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /january review/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /february review/i })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /february review/i }));
 
     expect(screen.getByText(/USD 5400/i)).toBeInTheDocument();
@@ -74,7 +83,10 @@ describe("SimulationsPage", () => {
           runs.unshift(saved);
           return new Response(JSON.stringify(saved));
         }
-        return new Response(JSON.stringify(runs));
+        const path = new URL(String(_input), window.location.origin).pathname;
+        return new Response(
+          JSON.stringify(path.includes("sim_saved") ? runs[0] : page(runs))
+        );
       })
     );
     renderSimulations();
@@ -84,12 +96,40 @@ describe("SimulationsPage", () => {
     await user.click(screen.getByRole("button", { name: /save simulation/i }));
 
     expect(await screen.findByText(/simulation saved/i)).toBeInTheDocument();
-    expect(await screen.findByText("Quarterly review")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /quarterly review/i })).toBeInTheDocument();
+  });
+
+  it("pages through saved simulation history", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), window.location.origin);
+        const first = run("sim_1", "January review", "2026-01-02T00:00:00.000Z", 2900);
+        const second = run("sim_2", "February review", "2026-02-02T00:00:00.000Z", 5400);
+        if (url.pathname.includes("sim_1")) {
+          return new Response(JSON.stringify(first));
+        }
+        if (url.pathname.includes("sim_2")) {
+          return new Response(JSON.stringify(second));
+        }
+        return new Response(
+          JSON.stringify(url.searchParams.get("cursor") ? pageWithCursor([second], null) : pageWithCursor([first], "next"))
+        );
+      })
+    );
+    renderSimulations();
+
+    expect(await screen.findByRole("button", { name: /january review/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /next page/i }));
+    expect(await screen.findByRole("button", { name: /february review/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /first page/i }));
+    expect(await screen.findByRole("button", { name: /january review/i })).toBeInTheDocument();
   });
 
   it("renders JSON parse failures before calling the API", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify([])));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(page([]))));
     vi.stubGlobal("fetch", fetchMock);
     renderSimulations();
 

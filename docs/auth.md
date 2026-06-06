@@ -51,7 +51,7 @@ Send the token as a standard bearer credential:
 Authorization: Bearer change-me
 ```
 
-The browser console reads `VITE_LEDGERFLOW_API_TOKEN` at build time and sends the bearer header through `web/src/lib/apiClient.ts`.
+The browser console prompts for an API base URL and token at login, stores tenant sessions in browser local storage, and sends the active token through `web/src/lib/apiClient.ts`. `VITE_LEDGERFLOW_API_TOKEN` can still pre-seed a session for controlled internal builds.
 
 ## Open Mode
 

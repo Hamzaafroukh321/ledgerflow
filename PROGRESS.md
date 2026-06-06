@@ -89,3 +89,14 @@
 - tests: backend 140 passing at 94.20% statements / 91.08% branches; frontend 67 passing at 97.82% statements / 90.16% branches; full verifier passed including 2 Playwright e2e tests and Docker build
 - decisions/notes: Upgraded Fastify, Vite, Vitest, React Router, and related plugins to clear root and web dependency audits; `LEDGERFLOW_LOGS=1` enables stdout JSON logs.
 - blockers (if any): none
+
+## [22:46] Phase 8 - Console scale-up  (WIP)
+- branch: feat/phase8-console-scale-up   commit: pending
+- what changed:
+  - Added runtime login, persisted tenant sessions, tenant switching, and role-aware route guards.
+  - Added `/coupons` and `/v1/coupons` list routes so the console can show a real coupon catalog.
+  - Upgraded catalog and simulation library screens to use `/v1` pagination and detail loading.
+  - Added save-to-library from the simulator and extended Playwright login-to-save coverage.
+- tests: backend 140 passing; frontend 95 passing at 97.60% statements / 91.24% branches; `verify.ps1 -SkipDocker` passed including scan, smoke, build, and 2 Playwright e2e tests
+- decisions/notes: Full verifier is blocked only at Docker build because Docker Desktop service is stopped and the Docker engine pipe is unavailable from this session.
+- blockers (if any): Start Docker Desktop or the `com.docker.service`, then rerun `.\scripts\verify.ps1` without `-SkipDocker`.

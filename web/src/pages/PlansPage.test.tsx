@@ -14,6 +14,16 @@ function renderPlans() {
   );
 }
 
+function page<T>(data: T[]) {
+  return { data, page: { limit: 25, total: data.length, nextCursor: null } };
+}
+
+function pageWithCursor<T>(data: T[], nextCursor: string | null) {
+  return { data, page: { limit: 25, total: 2, nextCursor } };
+}
+
+const coupons = [{ code: "SAVE20", kind: "percent", value: 20, stackable: true }];
+
 describe("PlansPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -24,9 +34,12 @@ describe("PlansPage", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(
-        async () =>
+        async (input: RequestInfo | URL) =>
           new Response(
-            JSON.stringify([
+            JSON.stringify(
+              String(input).includes("/coupons")
+                ? page(coupons)
+                : page([
               {
                 id: "starter_monthly",
                 name: "Starter Monthly",
@@ -52,6 +65,7 @@ describe("PlansPage", () => {
                 ]
               }
             ])
+            )
           )
       )
     );
@@ -60,7 +74,10 @@ describe("PlansPage", () => {
     expect(screen.getByText(/loading plans/i)).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Starter Monthly" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pro Monthly" })).toBeInTheDocument();
-    expect(screen.getByText("2 plans")).toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) => element?.textContent === "2 plans / 1 coupons")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "SAVE20" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save plan/i })).toBeInTheDocument();
   });
 
@@ -85,7 +102,9 @@ describe("PlansPage", () => {
           catalog.push(plan);
           return new Response(JSON.stringify(plan));
         }
-        return new Response(JSON.stringify(catalog));
+        return new Response(
+          JSON.stringify(String(_input).includes("/coupons") ? page(coupons) : page(catalog))
+        );
       })
     );
     renderPlans();
@@ -119,18 +138,75 @@ describe("PlansPage", () => {
   it("renders an empty state", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify([])))
+      vi.fn(async () => new Response(JSON.stringify(page([]))))
     );
     renderPlans();
 
     expect(await screen.findByText(/no plans are available/i)).toBeInTheDocument();
   });
 
+  it("pages plan and coupon catalogs", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), window.location.origin);
+        if (url.pathname.includes("/coupons")) {
+          return new Response(
+            JSON.stringify(
+              url.searchParams.get("cursor")
+                ? pageWithCursor([{ code: "WINTER", kind: "fixed", value: 500, stackable: false }], null)
+                : pageWithCursor(coupons, "coupon-2")
+            )
+          );
+        }
+        return new Response(
+          JSON.stringify(
+            url.searchParams.get("cursor")
+              ? pageWithCursor([
+                  {
+                    id: "enterprise",
+                    name: "Enterprise",
+                    type: "flat",
+                    currency: "USD",
+                    components: [
+                      { id: "base", name: "Base", type: "flat", currency: "USD", unitAmountMinor: 9900 }
+                    ]
+                  }
+                ], null)
+              : pageWithCursor([
+                  {
+                    id: "starter",
+                    name: "Starter",
+                    type: "flat",
+                    currency: "USD",
+                    components: [
+                      { id: "base", name: "Base", type: "flat", currency: "USD", unitAmountMinor: 2900 }
+                    ]
+                  }
+                ], "plan-2")
+          )
+        );
+      })
+    );
+    renderPlans();
+
+    expect(await screen.findByRole("heading", { name: "Starter" })).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Next" })[0]);
+    expect(await screen.findByRole("heading", { name: "Enterprise" })).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Next" })[1]);
+    expect(await screen.findByRole("heading", { name: "WINTER" })).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "First" })[0]);
+    expect(await screen.findByRole("heading", { name: "Starter" })).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "First" })[1]);
+    expect(await screen.findByRole("heading", { name: "SAVE20" })).toBeInTheDocument();
+  });
+
   it("hides write controls for viewer role", async () => {
     vi.stubEnv("VITE_LEDGERFLOW_ROLE", "viewer");
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(JSON.stringify([])))
+      vi.fn(async () => new Response(JSON.stringify(page([]))))
     );
     renderPlans();
 
@@ -161,7 +237,7 @@ describe("PlansPage", () => {
 
   it("renders plan JSON parse failures before calling the API", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify([])));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(page([]))));
     vi.stubGlobal("fetch", fetchMock);
     renderPlans();
 
@@ -170,6 +246,6 @@ describe("PlansPage", () => {
     await user.click(screen.getByRole("button", { name: /save plan/i }));
 
     expect(screen.getByText(/unexpected token/i)).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

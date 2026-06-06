@@ -97,6 +97,9 @@ describe("api", () => {
         })
       ).json()
     ).toEqual({ valid: true });
+    expect(
+      (await server.inject({ method: "GET", url: "/coupons" })).json()
+    ).toEqual([{ code: "SAVE", kind: "percent", value: 10, stackable: true }]);
 
     expect(
       (
@@ -251,6 +254,9 @@ describe("api", () => {
     expect(firstBody.data.map((plan) => plan.id)).toEqual(["pro_monthly", "starter_monthly"]);
     expect(secondBody.page).toMatchObject({ limit: 2, total: 3, nextCursor: null });
     expect(secondBody.data.map((plan) => plan.id)).toEqual(["v1_page_plan"]);
+    const coupons = await server.inject({ method: "GET", url: "/v1/coupons?limit=1" });
+    expect(coupons.json<{ data: unknown[]; page: { total: number } }>().page.total).toBe(2);
+    expect(coupons.json<{ data: unknown[] }>().data).toHaveLength(1);
 
     await server.close();
   });

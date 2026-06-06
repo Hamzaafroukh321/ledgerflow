@@ -36,8 +36,9 @@ on operational API routes. Clients can send either `Authorization: Bearer
 <token>` or `x-ledgerflow-token: <token>`. Health checks, Swagger UI,
 `/openapi.json`, and static web assets remain public.
 
-The browser console can send the same header when it is built with
-`VITE_LEDGERFLOW_API_TOKEN`, or custom clients can pass the token explicitly.
+The browser console sends the same header after an operator logs in with an API
+base URL and token. Controlled internal builds can still pre-seed a session with
+`VITE_LEDGERFLOW_API_TOKEN`; custom clients can pass the token explicitly.
 
 ## Persistence
 

@@ -134,6 +134,31 @@ export const planSchema = z.object({
 
 export const plansSchema = z.array(planSchema);
 
+export const couponSchema = z.object({
+  code: z.string(),
+  kind: z.enum(["percent", "fixed"]),
+  value: z.number(),
+  redemptionLimit: z.number().int().optional(),
+  redeemedCount: z.number().int().optional(),
+  appliesTo: z.array(z.string()).optional(),
+  stackable: z.boolean()
+});
+
+export const couponsSchema = z.array(couponSchema);
+
+export const pageMetaSchema = z.object({
+  limit: z.number().int(),
+  total: z.number().int(),
+  nextCursor: z.string().nullable()
+});
+
+export function pageSchema<T extends z.ZodType>(itemSchema: T) {
+  return z.object({
+    data: z.array(itemSchema),
+    page: pageMetaSchema
+  });
+}
+
 export const auditReportSchema = z.object({
   summary: z.object({
     valid: z.boolean(),
@@ -245,6 +270,8 @@ export type ApiErrorEnvelope = z.infer<typeof apiErrorEnvelopeSchema>;
 export type BillingContext = z.infer<typeof billingContextSchema>;
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type Plan = z.infer<typeof planSchema>;
+export type Coupon = z.infer<typeof couponSchema>;
+export type PageMeta = z.infer<typeof pageMetaSchema>;
 export type ScenarioComparison = z.infer<typeof scenarioComparisonSchema>;
 export type Customer = z.infer<typeof customerSchema>;
 export type CustomerBillingProfile = z.infer<typeof customerBillingProfileSchema>;

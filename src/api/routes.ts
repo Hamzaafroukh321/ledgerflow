@@ -304,6 +304,12 @@ export function registerRoutes(server: FastifyInstance, deps: RouteDeps): void {
     return validateCoupon(coupon);
   });
 
+  server.get("/coupons", async (request) => {
+    const repository = await requestRepository(request, deps);
+    const coupons = await repository.coupons.list();
+    return isVersionedApi(request) ? paginate(coupons, request) : coupons;
+  });
+
   server.get("/customers", async (request, reply) => {
     if (serveWebRoute(request, reply, deps)) {
       return reply;

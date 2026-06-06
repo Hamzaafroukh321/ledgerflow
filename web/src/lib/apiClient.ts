@@ -4,10 +4,13 @@ import {
   apiErrorEnvelopeSchema,
   auditReportSchema,
   billingContextSchema,
+  couponSchema,
+  couponsSchema,
   customerBillingProfileSchema,
   customerSchema,
   customersSchema,
   invoiceSchema,
+  pageSchema,
   planSchema,
   plansSchema,
   refundResultSchema,
@@ -19,8 +22,13 @@ import {
   usageEventSchema,
   usageEventsSchema,
   type BillingContext,
-  type Invoice
+  type Coupon,
+  type Invoice,
+  type PageMeta,
+  type Plan,
+  type SimulationRun
 } from "./schemas";
+import { readActiveSession } from "./session";
 
 export class ApiError extends Error {
   public constructor(
@@ -40,12 +48,24 @@ export interface ApiClientOptions {
   apiToken?: string;
 }
 
+export interface PageRequest {
+  limit?: number;
+  cursor?: string;
+}
+
+export interface Page<T> {
+  data: T[];
+  page: PageMeta;
+}
+
 export function createApiClient(options: ApiClientOptions = {}) {
-  const baseUrl = options.baseUrl ?? import.meta.env.VITE_LEDGERFLOW_API_BASE ?? "";
+  const configuredBaseUrl = options.baseUrl ?? import.meta.env.VITE_LEDGERFLOW_API_BASE ?? "";
   const fetchImpl = options.fetchImpl;
-  const apiToken = options.apiToken ?? import.meta.env.VITE_LEDGERFLOW_API_TOKEN;
 
   async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
+    const session = readActiveSession();
+    const baseUrl = options.baseUrl ?? session?.apiBaseUrl ?? configuredBaseUrl;
+    const apiToken = options.apiToken ?? session?.token ?? import.meta.env.VITE_LEDGERFLOW_API_TOKEN;
     const response = await (fetchImpl ?? fetch)(toRequestUrl(baseUrl, path), {
       ...init,
       headers: {
@@ -72,8 +92,13 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
   return {
     listPlans: () => request("/plans", plansSchema),
+    listPlansPage: (page?: PageRequest) =>
+      request("/v1/plans" + pageQuery(page), pageSchema(planSchema)),
     createPlan: (input: unknown) =>
       request("/plans", planSchema, body("POST", planSchema.parse(input))),
+    listCoupons: () => request("/coupons", couponsSchema),
+    listCouponsPage: (page?: PageRequest) =>
+      request("/v1/coupons" + pageQuery(page), pageSchema(couponSchema)),
     simulateInvoice: (context: BillingContext) =>
       request(
         "/invoices/simulate",
@@ -81,6 +106,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
         body("POST", billingContextSchema.parse(context))
       ),
     listSimulations: () => request("/simulations", simulationsSchema),
+    listSimulationsPage: (page?: PageRequest) =>
+      request("/v1/simulations" + pageQuery(page), pageSchema(simulationRunSchema)),
     createSimulation: (input: unknown) =>
       request(
         "/simulations",
@@ -142,6 +169,11 @@ export function createApiClient(options: ApiClientOptions = {}) {
   };
 }
 
+export type LedgerFlowApiClient = ReturnType<typeof createApiClient>;
+export type PlansPageResult = Page<Plan>;
+export type CouponsPageResult = Page<Coupon>;
+export type SimulationsPageResult = Page<SimulationRun>;
+
 function authHeader(apiToken: string | undefined): Record<string, string> {
   return apiToken ? { authorization: `Bearer ${apiToken}` } : {};
 }
@@ -164,6 +196,18 @@ function body(method: string, value: unknown): RequestInit {
     method,
     body: JSON.stringify(value)
   };
+}
+
+function pageQuery(page: PageRequest | undefined): string {
+  const params = new URLSearchParams();
+  if (page?.limit !== undefined) {
+    params.set("limit", String(page.limit));
+  }
+  if (page?.cursor) {
+    params.set("cursor", page.cursor);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 async function parseJson(response: Response): Promise<unknown> {
