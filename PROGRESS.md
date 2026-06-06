@@ -138,7 +138,7 @@
 - blockers (if any): none
 
 ## [00:19] Phase 10 - Release, deploy and docs  (DONE)
-- branch: feat/phase10-release-readiness   commit: b705730
+- branch: feat/phase10-release-readiness   commit: 5bd99cc
 - what changed:
   - Added `docker-compose.prod.yml` with required API token configuration, private Postgres, read-only app runtime, and production health checks.
   - Added `scripts/verify-release.ps1` to build, boot, verify auth/readiness/catalog behavior, and tear down the production compose stack.
