@@ -63,7 +63,6 @@ export function LoginPage() {
             <input
               className="rounded-md border border-slate-300 px-3 py-2"
               placeholder="token:tenant:subject:role"
-              type="password"
               value={token}
               onChange={(event) => setToken(event.target.value)}
             />
