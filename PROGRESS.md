@@ -91,7 +91,7 @@
 - blockers (if any): none
 
 ## [22:46] Phase 8 - Console scale-up  (WIP)
-- branch: feat/phase8-console-scale-up   commit: pending
+- branch: feat/phase8-console-scale-up   commit: 01f17eb
 - what changed:
   - Added runtime login, persisted tenant sessions, tenant switching, and role-aware route guards.
   - Added `/coupons` and `/v1/coupons` list routes so the console can show a real coupon catalog.
