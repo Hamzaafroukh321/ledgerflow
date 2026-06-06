@@ -118,3 +118,12 @@
 - tests: backend 152 passing at 96.63% statements / 90.11% branches; frontend 95 passing at 97.60% statements / 91.24% branches; `verify.ps1 -SkipDocker` passed including scan, smoke, build, and 2 Playwright e2e tests
 - decisions/notes: The cache stays outside the pure billing engine, so deterministic simulation math remains isolated from I/O and process configuration. Full verifier was rerun after the commit and failed only at Docker build.
 - blockers (if any): Docker Desktop engine is unavailable from this session; `docker compose build` cannot connect to `//./pipe/dockerDesktopLinuxEngine`.
+
+## [23:12] Phase 9 - Docker verification retry  (BLOCKED)
+- branch: feat/phase9-performance-scale   commit: b016d72
+- what changed:
+  - Rechecked Docker availability after resuming the goal.
+  - Confirmed the Docker service is still stopped and the engine pipe is still unavailable.
+- tests: no code change; previous green state remains backend 152 passing at 96.63% statements / 90.11% branches and frontend 95 passing at 97.60% statements / 91.24% branches
+- decisions/notes: Phase 10 was not started because Phase 9's Docker-backed verification is still not green and Phase 10's release DoD depends on a secured Docker/compose bring-up.
+- blockers (if any): Windows refuses `Start-Service com.docker.service` with "Cannot open com.docker.service service on computer '.'"; start Docker Desktop manually or grant service access, then rerun `.\scripts\verify.ps1`.
