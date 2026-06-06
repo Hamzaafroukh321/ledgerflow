@@ -29,6 +29,7 @@ import { registerObservability } from "./observability.js";
 import { registerRbac } from "./rbac.js";
 import { registerRequestIds } from "./request-id.js";
 import { registerRoutes } from "./routes.js";
+import { MemorySimulationCache, type SimulationCache } from "./simulation-cache.js";
 
 const rateLimitPlugin = rateLimit as unknown as FastifyPluginCallback<RateLimitPluginOptions>;
 type RouteRepository = LedgerRepository | AsyncLedgerRepository;
@@ -44,6 +45,7 @@ export interface ServerDeps {
   simulations?: SimulationRunRepository;
   memberships?: MembershipDirectory;
   idempotency?: IdempotencyStore;
+  simulationCache?: SimulationCache;
   logSink?: (line: string) => void;
 }
 
@@ -99,6 +101,7 @@ export function buildServer(
       repository,
       memberships: deps.memberships ?? defaults.memberships,
       idempotency: deps.idempotency ?? defaults.idempotency,
+      simulationCache: deps.simulationCache ?? defaults.simulationCache,
       simulateWithEngine,
       serveWeb
     });
@@ -109,6 +112,7 @@ export function buildServer(
           repository,
           memberships: deps.memberships ?? defaults.memberships,
           idempotency: deps.idempotency ?? defaults.idempotency,
+          simulationCache: deps.simulationCache ?? defaults.simulationCache,
           simulateWithEngine,
           serveWeb: false
         });
@@ -172,7 +176,8 @@ export function createDefaultServerDeps(
       customers: repository.customers as never,
       simulations: repository.simulations as never,
       memberships: new MemoryMembershipDirectory(),
-      idempotency: new MemoryIdempotencyStore()
+      idempotency: new MemoryIdempotencyStore(),
+      simulationCache: new MemorySimulationCache()
     };
   }
 
@@ -190,7 +195,8 @@ export function createDefaultServerDeps(
       customers: repository.customers,
       simulations: repository.simulations,
       memberships: new MemoryMembershipDirectory(),
-      idempotency: new MemoryIdempotencyStore()
+      idempotency: new MemoryIdempotencyStore(),
+      simulationCache: new MemorySimulationCache()
     };
   }
 
@@ -206,7 +212,8 @@ export function createDefaultServerDeps(
     customers: repository.customers,
     simulations: repository.simulations,
     memberships: new MemoryMembershipDirectory(),
-    idempotency: new MemoryIdempotencyStore()
+    idempotency: new MemoryIdempotencyStore(),
+    simulationCache: new MemorySimulationCache()
   };
 }
 

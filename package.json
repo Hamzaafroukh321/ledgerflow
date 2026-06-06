@@ -20,6 +20,7 @@
     "coverage": "vitest run --coverage",
     "format": "prettier --check .",
     "lint": "eslint .",
+    "load:simulate": "node scripts/load-profile.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },

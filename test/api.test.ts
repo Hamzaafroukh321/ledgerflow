@@ -257,8 +257,34 @@ describe("api", () => {
     const coupons = await server.inject({ method: "GET", url: "/v1/coupons?limit=1" });
     expect(coupons.json<{ data: unknown[]; page: { total: number } }>().page.total).toBe(2);
     expect(coupons.json<{ data: unknown[] }>().data).toHaveLength(1);
+    expect((await server.inject({ method: "GET", url: "/v1/plans?limit=101" })).statusCode).toBe(
+      400
+    );
+    expect((await server.inject({ method: "GET", url: "/v1/plans?cursor=not-base64" })).statusCode).toBe(400);
+    const invalidOffset = Buffer.from(JSON.stringify({ offset: -1 }), "utf8").toString("base64url");
+    expect(
+      (await server.inject({ method: "GET", url: `/v1/plans?cursor=${invalidOffset}` })).statusCode
+    ).toBe(400);
 
     await server.close();
+  });
+
+  it("hands HTML navigation requests to the web fallback when static serving is enabled", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "ledgerflow-web-root-"));
+    writeFileSync(join(directory, "index.html"), "<main>ledgerflow</main>");
+    const server = buildServer({}, { LEDGERFLOW_SERVE_WEB: "1", LEDGERFLOW_WEB_ROOT: directory });
+
+    const response = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { accept: "text/html" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain("ledgerflow");
+
+    await server.close();
+    rmSync(directory, { recursive: true, force: true });
   });
 
   it("replays idempotent plan saves and rejects changed replays", async () => {

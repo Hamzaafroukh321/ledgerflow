@@ -22,6 +22,7 @@ import type { ScenarioComparison, ScenarioInput, ScenarioResult } from "../scena
 import { withIdempotency, type IdempotencyStore } from "./idempotency.js";
 import type { MembershipDirectory } from "./memberships.js";
 import { paginate } from "./pagination.js";
+import { simulationCacheKey, type SimulationCache } from "./simulation-cache.js";
 import { withSpan } from "./tracing.js";
 
 type RouteRepository = LedgerRepository | AsyncLedgerRepository;
@@ -31,6 +32,7 @@ export interface RouteDeps {
   repository: RouteRepository;
   memberships: MembershipDirectory;
   idempotency: IdempotencyStore;
+  simulationCache?: SimulationCache;
   simulateWithEngine?: boolean;
   serveWeb?: boolean;
 }
@@ -448,7 +450,20 @@ async function simulateInvoice(input: unknown, deps: RouteDeps): Promise<Invoice
         })
       )
     );
-    return new InvoiceEngine({ [plan.id]: plan }, coupons).simulate(context);
+    const cacheKey = deps.simulationCache
+      ? simulationCacheKey({ context, plan, coupons })
+      : undefined;
+    if (cacheKey) {
+      const cached = deps.simulationCache?.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+    const invoice = new InvoiceEngine({ [plan.id]: plan }, coupons).simulate(context);
+    if (cacheKey) {
+      deps.simulationCache?.set(cacheKey, invoice);
+    }
+    return invoice;
   });
 }
 
