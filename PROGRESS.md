@@ -1,11 +1,11 @@
 # PROGRESS
 
 ## MORNING SUMMARY
-- phases completed: Phase 0 through Phase 7 are fully green; Phase 8 implementation is green except for the Docker engine blocker already recorded; Phase 9 implementation is committed and green through all non-Docker gates.
-- current branch state: `feat/phase9-performance-scale` at `c04c6b7` with Phase 9 performance work committed; `main` was not touched and nothing was pushed.
+- phases completed: Phase 0 through Phase 9 are fully green after Docker Desktop came back online.
+- current branch state: `feat/phase9-performance-scale` at `fa0dd6f` with Phase 9 performance work and progress notes committed; `main` was not touched and nothing was pushed.
 - total tests + coverage: backend 152 passing with 96.63% statements / 90.11% branches; frontend 95 passing with 97.60% statements / 91.24% branches; Playwright 2 passing.
-- blockers waiting on you: Docker Desktop engine is unavailable from this session. Full `.\scripts\verify.ps1` reaches Docker build, then fails opening `//./pipe/dockerDesktopLinuxEngine`.
-- exact next step: start Docker Desktop or the `com.docker.service`, then rerun `.\scripts\verify.ps1`; if Docker passes, move to Phase 10 release readiness on `feat/phase10-release-readiness`.
+- blockers waiting on you: none for Phase 9.
+- exact next step: move to Phase 10 release readiness on `feat/phase10-release-readiness`.
 
 ## [21:07] Phase 0 - Baseline lock, safety nets and dependency refresh  (DONE)
 - branch: feat/phase0-baseline   commit: c3bf5aa
@@ -127,3 +127,12 @@
 - tests: no code change; previous green state remains backend 152 passing at 96.63% statements / 90.11% branches and frontend 95 passing at 97.60% statements / 91.24% branches
 - decisions/notes: Phase 10 was not started because Phase 9's Docker-backed verification is still not green and Phase 10's release DoD depends on a secured Docker/compose bring-up.
 - blockers (if any): Windows refuses `Start-Service com.docker.service` with "Cannot open com.docker.service service on computer '.'"; start Docker Desktop manually or grant service access, then rerun `.\scripts\verify.ps1`.
+
+## [00:07] Phase 9 - Docker verification complete  (DONE)
+- branch: feat/phase9-performance-scale   commit: fa0dd6f
+- what changed:
+  - Re-ran the complete verifier after Docker Desktop became reachable via the `desktop-linux` context.
+  - Confirmed the Docker image builds successfully after backend, frontend, scan, smoke, and E2E gates.
+- tests: backend 152 passing at 96.63% statements / 90.11% branches; frontend 95 passing at 97.60% statements / 91.24% branches; 2 Playwright e2e passing; Docker build passing
+- decisions/notes: An initial full-verifier run hit a Playwright page-start timeout; the direct E2E rerun passed, and the next full verifier passed end to end.
+- blockers (if any): none
