@@ -1,5 +1,12 @@
 # PROGRESS
 
+## MORNING SUMMARY
+- phases completed: Phase 0 through Phase 7 are fully green; Phase 8 implementation is green except for the Docker engine blocker already recorded; Phase 9 implementation is committed and green through all non-Docker gates.
+- current branch state: `feat/phase9-performance-scale` at `c04c6b7` with Phase 9 performance work committed; `main` was not touched and nothing was pushed.
+- total tests + coverage: backend 152 passing with 96.63% statements / 90.11% branches; frontend 95 passing with 97.60% statements / 91.24% branches; Playwright 2 passing.
+- blockers waiting on you: Docker Desktop engine is unavailable from this session. Full `.\scripts\verify.ps1` reaches Docker build, then fails opening `//./pipe/dockerDesktopLinuxEngine`.
+- exact next step: start Docker Desktop or the `com.docker.service`, then rerun `.\scripts\verify.ps1`; if Docker passes, move to Phase 10 release readiness on `feat/phase10-release-readiness`.
+
 ## [21:07] Phase 0 - Baseline lock, safety nets and dependency refresh  (DONE)
 - branch: feat/phase0-baseline   commit: c3bf5aa
 - what changed:
@@ -100,3 +107,14 @@
 - tests: backend 140 passing; frontend 95 passing at 97.60% statements / 91.24% branches; `verify.ps1 -SkipDocker` passed including scan, smoke, build, and 2 Playwright e2e tests
 - decisions/notes: Full verifier is blocked only at Docker build because Docker Desktop service is stopped and the Docker engine pipe is unavailable from this session.
 - blockers (if any): Start Docker Desktop or the `com.docker.service`, then rerun `.\scripts\verify.ps1` without `-SkipDocker`.
+
+## [23:07] Phase 9 - Performance and scale testing  (BLOCKED)
+- branch: feat/phase9-performance-scale   commit: c04c6b7
+- what changed:
+  - Added an API-side in-memory simulation cache keyed by a SHA-256 hash of the billing context plus resolved plan and coupon records.
+  - Added tenant-scoped performance indexes for catalog, usage, customer, and simulation-library lookups.
+  - Added a dependency-free live load profile script and documented cache, index, load, and latency budget behavior.
+  - Added performance, pagination-limit, cache-clone, branch-edge, and route-helper coverage to keep the backend above 90% branches.
+- tests: backend 152 passing at 96.63% statements / 90.11% branches; frontend 95 passing at 97.60% statements / 91.24% branches; `verify.ps1 -SkipDocker` passed including scan, smoke, build, and 2 Playwright e2e tests
+- decisions/notes: The cache stays outside the pure billing engine, so deterministic simulation math remains isolated from I/O and process configuration. Full verifier was rerun after the commit and failed only at Docker build.
+- blockers (if any): Docker Desktop engine is unavailable from this session; `docker compose build` cannot connect to `//./pipe/dockerDesktopLinuxEngine`.
