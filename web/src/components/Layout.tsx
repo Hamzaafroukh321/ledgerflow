@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 
 import { Nav } from "./Nav";
+import { ReleaseFooter } from "./ReleaseFooter";
 import { useSession } from "./sessionContext";
 import { Toast } from "./Toast";
 
@@ -52,6 +53,7 @@ export function Layout() {
       <main className="mx-auto max-w-7xl px-6 py-6">
         <Outlet />
       </main>
+      <ReleaseFooter />
       <Toast />
     </div>
   );

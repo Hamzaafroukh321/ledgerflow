@@ -15,7 +15,7 @@ import { assertInvoiceFromFiles, formatAssertionReport } from "./assert.js";
 
 const program = new Command();
 
-program.name("ledgerflow").description("Deterministic billing simulation toolkit").version("0.1.0");
+program.name("ledgerflow").description("Deterministic billing simulation toolkit").version("0.2.0");
 
 program
   .command("plans")

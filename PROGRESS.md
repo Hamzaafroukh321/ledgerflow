@@ -1,11 +1,11 @@
 # PROGRESS
 
 ## MORNING SUMMARY
-- phases completed: Phase 0 through Phase 9 are fully green after Docker Desktop came back online.
-- current branch state: `feat/phase9-performance-scale` at `fa0dd6f` with Phase 9 performance work and progress notes committed; `main` was not touched and nothing was pushed.
-- total tests + coverage: backend 152 passing with 96.63% statements / 90.11% branches; frontend 95 passing with 97.60% statements / 91.24% branches; Playwright 2 passing.
-- blockers waiting on you: none for Phase 9.
-- exact next step: move to Phase 10 release readiness on `feat/phase10-release-readiness`.
+- phases completed: Phase 0 through Phase 10 are implemented and verified on per-phase branches.
+- current branch state: `feat/phase10-release-readiness` with release work ready to commit; `main` was not touched and nothing was pushed.
+- total tests + coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches; Playwright 2 passing; Docker build passing; production release verifier passing.
+- blockers waiting on you: none.
+- exact next step: review `feat/phase10-release-readiness`; push or merge only when you are ready.
 
 ## [21:07] Phase 0 - Baseline lock, safety nets and dependency refresh  (DONE)
 - branch: feat/phase0-baseline   commit: c3bf5aa
@@ -135,4 +135,15 @@
   - Confirmed the Docker image builds successfully after backend, frontend, scan, smoke, and E2E gates.
 - tests: backend 152 passing at 96.63% statements / 90.11% branches; frontend 95 passing at 97.60% statements / 91.24% branches; 2 Playwright e2e passing; Docker build passing
 - decisions/notes: An initial full-verifier run hit a Playwright page-start timeout; the direct E2E rerun passed, and the next full verifier passed end to end.
+- blockers (if any): none
+
+## [00:19] Phase 10 - Release, deploy and docs  (DONE)
+- branch: feat/phase10-release-readiness   commit: b705730
+- what changed:
+  - Added `docker-compose.prod.yml` with required API token configuration, private Postgres, read-only app runtime, and production health checks.
+  - Added `scripts/verify-release.ps1` to build, boot, verify auth/readiness/catalog behavior, and tear down the production compose stack.
+  - Added `docs/production-runbook.md`, `docs/threat-model.md`, release checklist updates, operations docs, README release commands, and a 0.2.0 changelog entry.
+  - Bumped release surfaces to 0.2.0 and added backend/frontend tests for release artifacts and console release links.
+- tests: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches; `.\scripts\verify.ps1` passed including scan, smoke, 2 Playwright e2e tests, and Docker build; `.\scripts\verify-release.ps1` passed against production compose
+- decisions/notes: Production compose uses Postgres via `LEDGERFLOW_DB_URL`, so API startup applies migrations before serving traffic. The local release tag is `v0.2.0`.
 - blockers (if any): none

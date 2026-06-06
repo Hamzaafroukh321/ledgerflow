@@ -26,8 +26,12 @@ The full verifier runs root lint/typecheck/tests/build, scan and smoke scripts t
 - API only: `node dist/cli/index.js serve --port 3000`
 - Web development: run the API on port 3000, then `cd web && npm run dev`
 - Compose: `docker compose up --build`
+- Production compose: `docker compose -f docker-compose.prod.yml up -d --build`
 
 Compose sets `LEDGERFLOW_DB=/data/ledgerflow.sqlite` and serves the built frontend from `/app/web/dist`.
+Production compose sets `LEDGERFLOW_DB_URL` to the private Postgres service, requires
+`LEDGERFLOW_API_TOKEN`, serves the built frontend from `/app/web/dist`, and keeps Postgres
+off the host network.
 
 ## Hosted API Token
 
@@ -47,3 +51,18 @@ SQLite-backed repositories are enabled only when `LEDGERFLOW_DB` is set. The def
 ## Release Artifact
 
 Run `scripts/package.sh` through Git Bash after verification. The package script builds `ledgerflow.zip` from tracked files plus `.git/HEAD`; generated output and dependency folders remain excluded.
+
+## Production Release Verification
+
+Use the production release verifier after the standard full verifier:
+
+```powershell
+.\scripts\verify.ps1
+.\scripts\verify-release.ps1
+```
+
+The release verifier starts `docker-compose.prod.yml`, confirms unauthenticated API requests
+are rejected, confirms authenticated readiness and plan-catalog access, then removes its
+temporary Compose project.
+
+See `docs/production-runbook.md` and `docs/threat-model.md` before publishing a release.

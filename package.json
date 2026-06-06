@@ -1,6 +1,6 @@
 {
   "name": "ledgerflow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic billing rules engine and invoice simulation toolkit for SaaS teams.",
   "type": "module",
   "main": "dist/index.js",
@@ -21,6 +21,7 @@
     "format": "prettier --check .",
     "lint": "eslint .",
     "load:simulate": "node scripts/load-profile.mjs",
+    "release:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-release.ps1",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },
