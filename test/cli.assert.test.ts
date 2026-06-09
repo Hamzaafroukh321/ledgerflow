@@ -53,7 +53,7 @@ describe("billing regression assert", () => {
     expect(drift.stderr).toContain("Billing assertion drift detected");
     expect(drift.stderr).toContain("$.totals.total: expected 3000, actual 2900");
     rmSync(directory, { recursive: true, force: true });
-  });
+  }, 15_000);
 
   it("ships a usable Action wrapper and example workflow", () => {
     const action = readFileSync("action.yml", "utf8");

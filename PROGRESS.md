@@ -1,10 +1,10 @@
 # PROGRESS
 
 ## HARDENING TALLY
-- defects found / fixed: 1 / 1
+- defects found / fixed: 2 / 2
 - tests added: E2E assertion hardened; simulator status/alert role assertions added
 - current coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches
-- commits: 1 on `work/hardening-20260609`
+- commits: 2 on `work/hardening-20260609`
 - push status: pushed to `origin/work/hardening-20260609`
 
 ## MORNING SUMMARY
@@ -178,3 +178,11 @@
   - Checked malformed `/v1/invoices/simulate` returns 400.
 - verified by: PowerShell `Invoke-RestMethod` sweep reported `API manual exercise passed`
 - commit: none   pushed: n/a
+
+## [15:06] CLI assertion integration timeout — FIXED
+- what:
+  - Found full verifier failure in `test/cli.assert.test.ts`; the real CLI exit-code integration test could exceed Vitest's default 5s timeout while spawning `tsx`.
+  - Kept the real process-level CLI coverage and added an explicit timeout to that integration test.
+  - Added component assertions that simulator save success uses `role=status` and save failure uses `role=alert`.
+- verified by: `npx vitest run test/cli.assert.test.ts` passed 4/4; `.\scripts\verify.ps1` passed end to end
+- commit: pending   pushed: pending
