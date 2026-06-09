@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## HARDENING TALLY
-- defects found / fixed: 3 / 3
+- defects found / fixed: 4 / 4
 - tests added: E2E assertion hardened; simulator status/alert role assertions added
 - current coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches
 - commits: 2 on `work/hardening-20260609`
@@ -222,4 +222,12 @@
   - Added a regression test proving `get()` and `list()` results cannot mutate stored coupon eligibility.
   - Switched memory coupon save/read/list operations to `structuredClone`, matching the defensive cloning used for plans and simulation runs.
 - verified by: `npx vitest run test/storage.test.ts` passed 6/6; `.\scripts\verify.ps1` passed with 165 backend tests, 101 frontend coverage tests, 2 E2E tests, and Docker build
+- commit: bd91404   pushed: yes
+
+## [15:50] Customer profile defensive cloning — FIXED
+- what:
+  - Found `createCustomer` kept references to caller-owned nested tax profile and metadata objects.
+  - Added regression coverage for constructor input mutation and memory repository read isolation.
+  - Defensively clone nested customer input when constructing customer records.
+- verified by: `npx vitest run test/customers.test.ts` passed 6/6; `.\scripts\verify.ps1` passed with 167 backend tests, 101 frontend coverage tests, 2 E2E tests, and Docker build
 - commit: pending   pushed: pending

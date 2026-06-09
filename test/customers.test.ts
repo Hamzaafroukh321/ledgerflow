@@ -53,6 +53,48 @@ describe("customer billing profiles", () => {
     );
   });
 
+  it("defensively copies nested customer profile input", () => {
+    const taxProfile = { exempt: false, jurisdiction: "US-CA", rates: { state: 0.0825 } };
+    const metadata = { segment: "growth" };
+    const customer = createCustomer({
+      id: "cus_1",
+      name: "Acme",
+      taxProfile,
+      metadata
+    });
+
+    taxProfile.rates.state = 0.1;
+    metadata.segment = "enterprise";
+
+    expect(customer.taxProfile).toEqual({
+      exempt: false,
+      jurisdiction: "US-CA",
+      rates: { state: 0.0825 }
+    });
+    expect(customer.metadata).toEqual({ segment: "growth" });
+  });
+
+  it("returns independent customer records from memory", () => {
+    const repository = new MemoryCustomerRepository();
+    const customer = createCustomer({
+      id: "cus_1",
+      name: "Acme",
+      taxProfile: { exempt: false, jurisdiction: "US-CA", rates: { state: 0.0825 } },
+      metadata: { segment: "growth" }
+    });
+
+    repository.saveCustomer(customer);
+    const fetched = repository.getCustomer("cus_1");
+    const listed = repository.listCustomers()[0];
+    if (!fetched?.taxProfile.rates || !listed) {
+      throw new Error("Expected saved customer records");
+    }
+    fetched.taxProfile.rates.state = 0.1;
+    listed.metadata.segment = "enterprise";
+
+    expect(repository.getCustomer("cus_1")).toEqual(customer);
+  });
+
   it("stores customers and assignments in memory", () => {
     const repository = new MemoryCustomerRepository();
     const customer = createCustomer({

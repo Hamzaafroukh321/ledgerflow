@@ -21,8 +21,8 @@ export function createCustomer(input: {
   const customer: Customer = {
     id: input.id,
     name: input.name,
-    taxProfile: input.taxProfile,
-    metadata: input.metadata ?? {}
+    taxProfile: structuredClone(input.taxProfile),
+    metadata: structuredClone(input.metadata ?? {})
   };
   if (input.email !== undefined) {
     customer.email = input.email;
