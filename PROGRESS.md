@@ -207,4 +207,11 @@
   - Kept the assertions that the error boundary renders a controlled failure state and `useSession` rejects missing provider usage.
 - Opted the router provider into React Router's `v7_startTransition` behavior to remove future-flag warning noise from E2E runs.
 - verified by: `npm --prefix web test -- src/components/ErrorBoundary.test.tsx src/components/sessionContext.test.tsx` passed 2/2 with clean output; `npm --prefix web run typecheck` passed; `npm --prefix web run e2e` passed 2/2 with clean output; `.\scripts\verify.ps1` passed
+- commit: 83e1e6f   pushed: yes
+
+## [15:39] Usage UI typed error coverage — WIP
+- what:
+  - Added UsagePage coverage for typed validation envelopes returned by ingest and aggregate mutations.
+  - Confirmed the UI shows the stable `code: message` form for API errors instead of the generic unexpected-error fallback.
+- verified by: `npm --prefix web test -- src/pages/UsagePage.test.tsx` passed 5/5; `.\scripts\verify.ps1` passed with 164 backend tests, 101 frontend coverage tests, 2 E2E tests, and frontend coverage 97.61% statements / 91.51% branches
 - commit: pending   pushed: pending
