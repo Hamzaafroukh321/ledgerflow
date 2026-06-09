@@ -2,17 +2,18 @@
 
 ## HARDENING TALLY
 - defects found / fixed: 4 / 4
-- tests added: E2E assertion hardened; simulator status/alert role assertions added
-- current coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches
-- commits: 2 on `work/hardening-20260609`
+- tests added: backend 168 passing, frontend 101 passing, Playwright 2 passing
+- current coverage: frontend 97.61% statements / 91.51% branches; backend coverage gate remains 90% statements and branches
+- commits: 9 on `work/hardening-20260609`
 - push status: pushed to `origin/work/hardening-20260609`
 
 ## MORNING SUMMARY
-- phases completed: Phase 0 through Phase 10 are implemented and verified on per-phase branches.
-- current branch state: `feat/phase10-release-readiness` with release work ready to commit; `main` was not touched and nothing was pushed.
-- total tests + coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches; Playwright 2 passing; Docker build passing; production release verifier passing.
+- phases completed: Phase 0 through Phase 10 were already implemented; hardening work is now proceeding on `work/hardening-20260609`.
+- current branch state: `work/hardening-20260609` is clean and pushed to origin; `main` was not touched.
+- total tests + coverage: backend 168 passing; frontend 101 passing at 97.61% statements / 91.51% branches; Playwright 2 passing; Docker build passing; production release verifier passing.
+- hardening highlights: fixed simulation-save status ambiguity, stabilized process-level CLI assertion coverage, added tenant/idempotency and discount edge coverage, cleaned frontend test output, covered Usage UI typed API errors, fixed memory coupon defensive cloning, fixed customer profile input cloning, and added memory transaction result coverage.
 - blockers waiting on you: none.
-- exact next step: review `feat/phase10-release-readiness`; push or merge only when you are ready.
+- exact next step: continue hardening from `work/hardening-20260609` or review the pushed branch.
 
 ## [21:07] Phase 0 - Baseline lock, safety nets and dependency refresh  (DONE)
 - branch: feat/phase0-baseline   commit: c3bf5aa
