@@ -230,4 +230,11 @@
   - Added regression coverage for constructor input mutation and memory repository read isolation.
   - Defensively clone nested customer input when constructing customer records.
 - verified by: `npx vitest run test/customers.test.ts` passed 6/6; `.\scripts\verify.ps1` passed with 167 backend tests, 101 frontend coverage tests, 2 E2E tests, and Docker build
+- commit: 866ba45   pushed: yes
+
+## [15:55] Memory transaction contract coverage — WIP
+- what:
+  - Added coverage that in-memory repository transactions return the work result before close.
+  - Kept the existing post-close rejection test as the failure side of the same contract.
+- verified by: `npx vitest run test/data.repository.test.ts` passed 5/5; `.\scripts\verify.ps1` passed with 168 backend tests, 101 frontend coverage tests, 2 E2E tests, and Docker build
 - commit: pending   pushed: pending

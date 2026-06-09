@@ -57,6 +57,16 @@ it("rejects memory transactions after close", () => {
   expect(() => repository.transaction(() => undefined)).toThrow("Repository is closed");
 });
 
+it("returns memory transaction results before close", () => {
+  const repository = new MemoryLedgerRepository();
+
+  try {
+    expect(repository.transaction(() => "committed")).toBe("committed");
+  } finally {
+    repository.close();
+  }
+});
+
 function exerciseRepository(repository: LedgerRepository): void {
   seedDefaultPlans(repository.plans);
   seedDefaultCoupons(repository.coupons);
