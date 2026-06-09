@@ -9,14 +9,10 @@ import {
   createDefaultServerDeps,
   AppError,
   MemoryCouponRepository,
+  MemoryLedgerRepository,
   MemoryPlanRepository,
-  MemorySimulationRunRepository,
-  MemoryUsageRepository,
-  SqliteCouponRepository,
-  SqliteCustomerRepository,
-  SqlitePlanRepository,
-  SqliteSimulationRunRepository,
-  SqliteUsageRepository,
+  PostgresLedgerRepository,
+  SqliteLedgerRepository,
   type BillingContext,
   type Invoice,
   type Plan
@@ -101,6 +97,9 @@ describe("api", () => {
         })
       ).json()
     ).toEqual({ valid: true });
+    expect((await server.inject({ method: "GET", url: "/coupons" })).json()).toEqual([
+      { code: "SAVE", kind: "percent", value: 10, stackable: true }
+    ]);
 
     expect(
       (
@@ -148,6 +147,281 @@ describe("api", () => {
     await server.close();
   });
 
+  it("serves the v1 API namespace with the same route contracts", async () => {
+    const server = buildServer();
+
+    expect((await server.inject({ method: "GET", url: "/v1/health" })).json()).toEqual({
+      status: "ok"
+    });
+    expect(
+      (await server.inject({ method: "GET", url: "/v1/plans" }))
+        .json<{ data: Plan[] }>()
+        .data.map((plan) => plan.id)
+    ).toEqual(["pro_monthly", "starter_monthly"]);
+    const simulated = await server.inject({
+      method: "POST",
+      url: "/v1/invoices/simulate",
+      payload: context
+    });
+    expect(simulated.statusCode).toBe(200);
+    expect(simulated.json<Invoice>().totals.total).toBe(2900);
+
+    await server.close();
+  });
+
+  it("protects v1 writes with the same auth and role gates", async () => {
+    const server = buildServer(
+      {},
+      {
+        LEDGERFLOW_API_TOKENS:
+          "viewer-v1:tenant-v1:viewer-user:viewer,editor-v1:tenant-v1:editor-user:editor"
+      }
+    );
+    const plan: Plan = {
+      id: "v1_private",
+      name: "V1 Private",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 500
+        }
+      ]
+    };
+
+    expect(
+      (await server.inject({ method: "POST", url: "/v1/plans", payload: plan })).statusCode
+    ).toBe(401);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/plans",
+          headers: { authorization: "Bearer viewer-v1" },
+          payload: plan
+        })
+      ).statusCode
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/v1/plans",
+          headers: { authorization: "Bearer editor-v1" },
+          payload: plan
+        })
+      ).statusCode
+    ).toBe(200);
+
+    await server.close();
+  });
+
+  it("paginates v1 list endpoints with stable cursors and totals", async () => {
+    const server = buildServer();
+    const customPlan: Plan = {
+      id: "v1_page_plan",
+      name: "V1 Page Plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 1500
+        }
+      ]
+    };
+
+    await server.inject({ method: "POST", url: "/v1/plans", payload: customPlan });
+    const first = await server.inject({ method: "GET", url: "/v1/plans?limit=2" });
+    const firstBody = first.json<{
+      data: Plan[];
+      page: { limit: number; total: number; nextCursor: string | null };
+    }>();
+    const second = await server.inject({
+      method: "GET",
+      url: `/v1/plans?limit=2&cursor=${firstBody.page.nextCursor ?? ""}`
+    });
+    const secondBody = second.json<{
+      data: Plan[];
+      page: { limit: number; total: number; nextCursor: string | null };
+    }>();
+
+    expect(first.statusCode).toBe(200);
+    expect(firstBody.page).toMatchObject({ limit: 2, total: 3 });
+    expect(firstBody.data.map((plan) => plan.id)).toEqual(["pro_monthly", "starter_monthly"]);
+    expect(secondBody.page).toMatchObject({ limit: 2, total: 3, nextCursor: null });
+    expect(secondBody.data.map((plan) => plan.id)).toEqual(["v1_page_plan"]);
+    const coupons = await server.inject({ method: "GET", url: "/v1/coupons?limit=1" });
+    expect(coupons.json<{ data: unknown[]; page: { total: number } }>().page.total).toBe(2);
+    expect(coupons.json<{ data: unknown[] }>().data).toHaveLength(1);
+    expect((await server.inject({ method: "GET", url: "/v1/plans?limit=101" })).statusCode).toBe(
+      400
+    );
+    expect(
+      (await server.inject({ method: "GET", url: "/v1/plans?cursor=not-base64" })).statusCode
+    ).toBe(400);
+    const invalidOffset = Buffer.from(JSON.stringify({ offset: -1 }), "utf8").toString("base64url");
+    expect(
+      (await server.inject({ method: "GET", url: `/v1/plans?cursor=${invalidOffset}` })).statusCode
+    ).toBe(400);
+
+    await server.close();
+  });
+
+  it("hands HTML navigation requests to the web fallback when static serving is enabled", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "ledgerflow-web-root-"));
+    writeFileSync(join(directory, "index.html"), "<main>ledgerflow</main>");
+    const server = buildServer({}, { LEDGERFLOW_SERVE_WEB: "1", LEDGERFLOW_WEB_ROOT: directory });
+
+    const response = await server.inject({
+      method: "GET",
+      url: "/plans",
+      headers: { accept: "text/html" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain("ledgerflow");
+
+    await server.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it("replays idempotent plan saves and rejects changed replays", async () => {
+    const server = buildServer();
+    const plan: Plan = {
+      id: "idem_plan",
+      name: "Idempotent Plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 900
+        }
+      ]
+    };
+
+    const first = await server.inject({
+      method: "POST",
+      url: "/v1/plans",
+      headers: { "idempotency-key": "plan-save-1" },
+      payload: plan
+    });
+    const replay = await server.inject({
+      method: "POST",
+      url: "/v1/plans",
+      headers: { "idempotency-key": "plan-save-1" },
+      payload: plan
+    });
+    const conflict = await server.inject({
+      method: "POST",
+      url: "/v1/plans",
+      headers: { "idempotency-key": "plan-save-1" },
+      payload: { ...plan, name: "Changed Plan" }
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.headers["idempotency-replayed"]).toBe("true");
+    expect(replay.json()).toEqual(first.json());
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json().error).toMatchObject({
+      code: "idempotency_conflict",
+      message: "Idempotency-Key was reused with a different request body."
+    });
+
+    await server.close();
+  });
+
+  it("replays idempotent simulation saves without creating duplicate runs", async () => {
+    const server = buildServer();
+    const payload = { name: "forecast", context };
+
+    const first = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { "idempotency-key": "simulation-save-1" },
+      payload
+    });
+    const replay = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { "idempotency-key": "simulation-save-1" },
+      payload
+    });
+    const list = await server.inject({ method: "GET", url: "/v1/simulations?limit=10" });
+
+    expect(first.statusCode).toBe(200);
+    expect(replay.headers["idempotency-replayed"]).toBe("true");
+    expect(replay.json()).toEqual(first.json());
+    expect(list.json<{ data: unknown[]; page: { total: number } }>().page.total).toBe(1);
+
+    await server.close();
+  });
+
+  it("scopes idempotent simulation saves by tenant principal", async () => {
+    const server = buildServer(
+      {},
+      { LEDGERFLOW_API_TOKENS: "tenant-a-token:tenant-a:user-a,tenant-b-token:tenant-b:user-b" }
+    );
+    const payload = { id: "shared-idem-run", name: "tenant forecast", context };
+
+    const first = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { authorization: "Bearer tenant-a-token", "idempotency-key": "shared-key" },
+      payload
+    });
+    const sameTenantReplay = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { authorization: "Bearer tenant-a-token", "idempotency-key": "shared-key" },
+      payload
+    });
+    const otherTenant = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { authorization: "Bearer tenant-b-token", "idempotency-key": "shared-key" },
+      payload
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(sameTenantReplay.headers["idempotency-replayed"]).toBe("true");
+    expect(sameTenantReplay.json()).toEqual(first.json());
+    expect(otherTenant.statusCode).toBe(200);
+    expect(otherTenant.headers["idempotency-replayed"]).toBeUndefined();
+    expect(
+      (
+        await server.inject({
+          method: "GET",
+          url: "/v1/simulations",
+          headers: { authorization: "Bearer tenant-a-token" }
+        })
+      ).json<{ data: unknown[] }>().data
+    ).toHaveLength(1);
+    expect(
+      (
+        await server.inject({
+          method: "GET",
+          url: "/v1/simulations",
+          headers: { authorization: "Bearer tenant-b-token" }
+        })
+      ).json<{ data: unknown[] }>().data
+    ).toHaveLength(1);
+
+    await server.close();
+  });
+
   it("serves OpenAPI JSON and Swagger UI", async () => {
     const server = buildServer();
 
@@ -157,6 +431,100 @@ describe("api", () => {
 
     const docs = await server.inject({ method: "GET", url: "/docs" });
     expect(docs.statusCode).toBeLessThan(400);
+    await server.close();
+  });
+
+  it("propagates request ids through headers and error envelopes", async () => {
+    const server = buildServer();
+
+    const health = await server.inject({
+      method: "GET",
+      url: "/health",
+      headers: { "x-request-id": "req-health" }
+    });
+    const invalid = await server.inject({
+      method: "POST",
+      url: "/usage/events",
+      payload: {}
+    });
+
+    expect(health.headers["x-request-id"]).toBe("req-health");
+    expect(invalid.headers["x-request-id"]).toEqual(expect.any(String));
+    expect(invalid.json().error.requestId).toBe(invalid.headers["x-request-id"]);
+    await server.close();
+  });
+
+  it("exposes readiness, Prometheus metrics, and structured request logs", async () => {
+    const logs: string[] = [];
+    const server = buildServer(
+      { logSink: (line) => logs.push(line) },
+      { LEDGERFLOW_API_TOKENS: "obs-token:tenant-obs:user-obs:viewer" }
+    );
+
+    const ready = await server.inject({ method: "GET", url: "/ready" });
+    const simulated = await server.inject({
+      method: "POST",
+      url: "/v1/invoices/simulate",
+      headers: { authorization: "Bearer obs-token", "x-request-id": "req-obs" },
+      payload: context
+    });
+    const metrics = await server.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: { authorization: "Bearer obs-token" }
+    });
+
+    expect(ready.statusCode).toBe(200);
+    expect(ready.json()).toEqual({ status: "ready" });
+    expect(simulated.statusCode).toBe(200);
+    expect(metrics.body).toContain("ledgerflow_http_requests_total");
+    expect(metrics.body).toContain('route="/v1/invoices/simulate"');
+    expect(metrics.body).toContain("ledgerflow_simulations_total 1");
+    const parsedLog = JSON.parse(logs.find((line) => line.includes("req-obs")) ?? "{}") as {
+      requestId?: string;
+      tenantId?: string;
+      subject?: string;
+      msg?: string;
+    };
+    expect(parsedLog).toMatchObject({
+      msg: "request completed",
+      requestId: "req-obs",
+      tenantId: "tenant-obs",
+      subject: "user-obs"
+    });
+
+    await server.close();
+  });
+
+  it("keeps liveness up while readiness fails for an unavailable repository", async () => {
+    const repository = new MemoryLedgerRepository();
+    const failingRepository = {
+      plans: {
+        get: async (planId: string) => repository.plans.get(planId),
+        save: async (plan: Plan) => repository.plans.save(plan),
+        list: async () => {
+          throw new Error("database unavailable");
+        }
+      },
+      usage: repository.usage,
+      coupons: repository.coupons,
+      customers: repository.customers,
+      simulations: repository.simulations,
+      transaction: repository.transaction.bind(repository),
+      close: repository.close.bind(repository)
+    };
+    const server = buildServer({ repository: failingRepository as never });
+
+    const health = await server.inject({ method: "GET", url: "/health" });
+    const ready = await server.inject({ method: "GET", url: "/ready" });
+
+    expect(health.statusCode).toBe(200);
+    expect(ready.statusCode).toBe(503);
+    expect(ready.json().error).toMatchObject({
+      code: "not_ready",
+      message: "database unavailable"
+    });
+
     await server.close();
   });
 
@@ -182,7 +550,7 @@ describe("api", () => {
     const missingToken = await server.inject({
       method: "GET",
       url: "/plans",
-      headers: { accept: "application/json" }
+      headers: { accept: "application/json", "x-request-id": "req-missing-token" }
     });
     const wrongToken = await server.inject({
       method: "GET",
@@ -209,7 +577,8 @@ describe("api", () => {
     expect(missingToken.json()).toEqual({
       error: {
         code: "unauthorized",
-        message: "A valid LedgerFlow API token is required."
+        message: "A valid LedgerFlow API token is required.",
+        requestId: "req-missing-token"
       }
     });
     expect(wrongToken.statusCode).toBe(401);
@@ -353,10 +722,19 @@ describe("api", () => {
       throw new AppError("forced_error", "Forced failure", 418, { reason: "test" });
     });
 
-    const response = await server.inject({ method: "GET", url: "/forced-error" });
+    const response = await server.inject({
+      method: "GET",
+      url: "/forced-error",
+      headers: { "x-request-id": "req-forced" }
+    });
     expect(response.statusCode).toBe(418);
     expect(response.json()).toEqual({
-      error: { code: "forced_error", message: "Forced failure", details: { reason: "test" } }
+      error: {
+        code: "forced_error",
+        message: "Forced failure",
+        details: { reason: "test" },
+        requestId: "req-forced"
+      }
     });
     await server.close();
   });
@@ -479,11 +857,7 @@ describe("api", () => {
   it("uses sqlite repositories when LEDGERFLOW_DB is configured", () => {
     const deps = createDefaultServerDeps({ LEDGERFLOW_DB: ":memory:" });
 
-    expect(deps.plans).toBeInstanceOf(SqlitePlanRepository);
-    expect(deps.usage).toBeInstanceOf(SqliteUsageRepository);
-    expect(deps.coupons).toBeInstanceOf(SqliteCouponRepository);
-    expect(deps.customers).toBeInstanceOf(SqliteCustomerRepository);
-    expect(deps.simulations).toBeInstanceOf(SqliteSimulationRunRepository);
+    expect(deps.repository).toBeInstanceOf(SqliteLedgerRepository);
     expect(
       deps.plans
         .list()
@@ -491,21 +865,7 @@ describe("api", () => {
         .sort()
     ).toEqual(["pro_monthly", "starter_monthly"]);
     expect(deps.coupons.get("SAVE20")).toMatchObject({ code: "SAVE20", value: 20 });
-    if (deps.plans instanceof SqlitePlanRepository) {
-      deps.plans.close();
-    }
-    if (deps.usage instanceof SqliteUsageRepository) {
-      deps.usage.close();
-    }
-    if (deps.coupons instanceof SqliteCouponRepository) {
-      deps.coupons.close();
-    }
-    if (deps.customers instanceof SqliteCustomerRepository) {
-      deps.customers.close();
-    }
-    if (deps.simulations instanceof SqliteSimulationRunRepository) {
-      deps.simulations.close();
-    }
+    deps.repository.close();
   });
 
   it("persists customer profiles through sqlite-backed API restarts", async () => {
@@ -566,9 +926,221 @@ describe("api", () => {
   it("uses memory repositories by default", () => {
     const deps = createDefaultServerDeps({});
 
-    expect(deps.plans).toBeInstanceOf(MemoryPlanRepository);
-    expect(deps.usage).toBeInstanceOf(MemoryUsageRepository);
-    expect(deps.coupons).toBeInstanceOf(MemoryCouponRepository);
-    expect(deps.simulations).toBeInstanceOf(MemorySimulationRunRepository);
+    expect(deps.repository).toBeInstanceOf(MemoryLedgerRepository);
+  });
+
+  it("selects postgres repositories when LEDGERFLOW_DB_URL is configured", async () => {
+    const deps = createDefaultServerDeps({ LEDGERFLOW_DB_URL: "postgres://localhost/ledgerflow" });
+
+    expect(deps.repository).toBeInstanceOf(PostgresLedgerRepository);
+    await deps.repository.close();
+  });
+
+  it("isolates tenant-owned plans and saved simulations by token principal", async () => {
+    const server = buildServer(
+      {},
+      { LEDGERFLOW_API_TOKENS: "token-a:tenant-a:user-a,token-b:tenant-b:user-b" }
+    );
+    const tenantA = { authorization: "Bearer token-a" };
+    const tenantB = { authorization: "Bearer token-b" };
+    const privatePlan: Plan = {
+      id: "private_plan",
+      name: "Tenant A plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 1234
+        }
+      ]
+    };
+
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/plans",
+          headers: tenantA,
+          payload: privatePlan
+        })
+      ).statusCode
+    ).toBe(200);
+
+    const plansA = (await server.inject({ method: "GET", url: "/plans", headers: tenantA })).json<
+      Plan[]
+    >();
+    const plansB = (await server.inject({ method: "GET", url: "/plans", headers: tenantB })).json<
+      Plan[]
+    >();
+    expect(plansA.map((plan) => plan.id)).toContain("private_plan");
+    expect(plansB.map((plan) => plan.id)).not.toContain("private_plan");
+
+    const privateContext = {
+      ...context,
+      subscription: { planId: "private_plan", seats: 1, changedOn: null }
+    };
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/invoices/simulate",
+          headers: tenantA,
+          payload: privateContext
+        })
+      ).statusCode
+    ).toBe(200);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/invoices/simulate",
+          headers: tenantB,
+          payload: privateContext
+        })
+      ).statusCode
+    ).toBe(404);
+
+    const saved = await server.inject({
+      method: "POST",
+      url: "/simulations",
+      headers: tenantA,
+      payload: { id: "private_sim", name: "Tenant A simulation", context: privateContext }
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(
+      (await server.inject({ method: "GET", url: "/simulations/private_sim", headers: tenantB }))
+        .statusCode
+    ).toBe(404);
+    expect(
+      (await server.inject({ method: "GET", url: "/simulations", headers: tenantB })).json<
+        unknown[]
+      >()
+    ).toEqual([]);
+
+    await server.close();
+  });
+
+  it("enforces viewer, editor, and admin route permissions", async () => {
+    const server = buildServer(
+      {},
+      {
+        LEDGERFLOW_API_TOKENS:
+          "viewer-token:tenant-rbac:viewer-user:viewer,editor-token:tenant-rbac:editor-user:editor,admin-token:tenant-rbac:admin-user:admin"
+      }
+    );
+    const viewer = { authorization: "Bearer viewer-token" };
+    const editor = { authorization: "Bearer editor-token" };
+    const admin = { authorization: "Bearer admin-token" };
+    const plan: Plan = {
+      id: "rbac_plan",
+      name: "RBAC Plan",
+      type: "flat",
+      currency: "USD",
+      components: [
+        {
+          id: "base",
+          name: "Base",
+          type: "flat",
+          currency: "USD",
+          unitAmountMinor: 1000
+        }
+      ]
+    };
+
+    expect(
+      (await server.inject({ method: "GET", url: "/plans", headers: viewer })).statusCode
+    ).toBe(200);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/invoices/simulate",
+          headers: viewer,
+          payload: context
+        })
+      ).statusCode
+    ).toBe(200);
+
+    const deniedPlan = await server.inject({
+      method: "POST",
+      url: "/plans",
+      headers: { ...viewer, "x-request-id": "req-denied-plan" },
+      payload: plan
+    });
+    expect(deniedPlan.statusCode).toBe(403);
+    expect(deniedPlan.json()).toEqual({
+      error: {
+        code: "forbidden",
+        message: "This action requires write permission.",
+        requestId: "req-denied-plan"
+      }
+    });
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/simulations",
+          headers: viewer,
+          payload: { id: "viewer_denied", context }
+        })
+      ).statusCode
+    ).toBe(403);
+
+    expect(
+      (await server.inject({ method: "POST", url: "/plans", headers: editor, payload: plan }))
+        .statusCode
+    ).toBe(200);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/usage/events",
+          headers: admin,
+          payload: {
+            idempotencyKey: "rbac_evt",
+            customerId: "cus_rbac",
+            meter: "api_calls",
+            quantity: 1,
+            timestamp: "2026-01-01T00:00:00.000Z"
+          }
+        })
+      ).statusCode
+    ).toBe(200);
+
+    expect(
+      (await server.inject({ method: "GET", url: "/memberships", headers: viewer })).statusCode
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/memberships",
+          headers: editor,
+          payload: { userId: "member_1", role: "viewer" }
+        })
+      ).statusCode
+    ).toBe(403);
+    const membership = await server.inject({
+      method: "POST",
+      url: "/memberships",
+      headers: admin,
+      payload: { userId: "member_1", role: "viewer", email: "member@example.com" }
+    });
+    expect(membership.statusCode).toBe(200);
+    expect(membership.json()).toEqual({
+      tenantId: "tenant-rbac",
+      userId: "member_1",
+      role: "viewer",
+      email: "member@example.com"
+    });
+    expect(
+      (await server.inject({ method: "GET", url: "/memberships", headers: admin })).json()
+    ).toEqual([membership.json()]);
+
+    await server.close();
   });
 });

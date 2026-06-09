@@ -1,0 +1,14 @@
+name: billing
+
+on:
+  pull_request:
+
+jobs:
+  billing-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          context: examples/invoice-basic.json
+          expected: test/golden/fixtures/invoice-basic.invoice.json

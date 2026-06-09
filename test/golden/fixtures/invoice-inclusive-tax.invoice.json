@@ -1,0 +1,60 @@
+{
+  "creditsApplied": [],
+  "currency": "USD",
+  "discounts": [],
+  "explanation": {
+    "children": [
+      {
+        "children": [],
+        "id": "subtotal",
+        "rule": "subtotal",
+        "total": 2900
+      },
+      {
+        "children": [],
+        "id": "discounts",
+        "rule": "discounts",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "credits",
+        "rule": "credits",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "tax",
+        "rule": "tax",
+        "total": 483
+      }
+    ],
+    "id": "root",
+    "rule": "invoice_total",
+    "total": 2900
+  },
+  "lineItems": [
+    {
+      "amountMinor": 2900,
+      "currency": "USD",
+      "description": "Starter plan",
+      "id": "starter_base",
+      "traceId": "starter_base"
+    }
+  ],
+  "taxLines": [
+    {
+      "amountMinor": 483,
+      "inclusive": true,
+      "jurisdiction": "GB",
+      "rate": 0.2
+    }
+  ],
+  "totals": {
+    "creditTotal": 0,
+    "discountTotal": 0,
+    "subtotal": 2900,
+    "tax": 483,
+    "total": 2900
+  }
+}

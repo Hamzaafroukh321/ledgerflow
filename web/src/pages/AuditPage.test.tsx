@@ -48,4 +48,37 @@ describe("AuditPage", () => {
 
     expect(await screen.findByText(/currency/i)).toBeInTheDocument();
   });
+
+  it("renders API audit failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: { code: "domain_error", message: "Invoice mismatch" } }), {
+          status: 400,
+          statusText: "Bad Request"
+        })
+      )
+    );
+    renderAudit();
+
+    await user.click(screen.getByRole("button", { name: /audit invoice/i }));
+
+    expect(await screen.findByText(/domain_error: Invoice mismatch/i)).toBeInTheDocument();
+  });
+
+  it("renders unexpected audit failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      })
+    );
+    renderAudit();
+
+    await user.click(screen.getByRole("button", { name: /audit invoice/i }));
+
+    expect(await screen.findByText(/unexpected error/i)).toBeInTheDocument();
+  });
 });

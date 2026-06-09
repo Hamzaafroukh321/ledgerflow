@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { billingContextSchema, invoiceSchema } from "./schemas";
+import { flattenTrace } from "./traceTree";
 
 const context = {
   currency: "USD",
@@ -38,5 +39,15 @@ describe("schemas", () => {
     });
 
     expect(invoice.explanation.children[0]?.rule).toBe("subtotal");
+  });
+
+  it("flattens trace leaves with missing children", () => {
+    const leafWithoutChildren = { id: "root", rule: "leaf", total: 1 } as unknown as Parameters<
+      typeof flattenTrace
+    >[0];
+
+    expect(flattenTrace(leafWithoutChildren)).toEqual([
+      { id: "root", rule: "leaf", total: 1, depth: 0 }
+    ]);
   });
 });

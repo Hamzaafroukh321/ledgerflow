@@ -31,7 +31,11 @@ describe("UsagePage", () => {
       .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify([event])))
       .mockResolvedValueOnce(new Response(JSON.stringify({ accepted: true })))
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ ...event }, { ...event, idempotencyKey: "evt_2", quantity: 250 }])));
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ ...event }, { ...event, idempotencyKey: "evt_2", quantity: 250 }])
+        )
+      );
     vi.stubGlobal("fetch", fetchMock);
     renderUsage();
 
@@ -39,12 +43,17 @@ describe("UsagePage", () => {
     fireEvent.change(screen.getByLabelText(/customer id/i), { target: { value: "cus_beta" } });
     fireEvent.change(screen.getByLabelText(/^meter$/i), { target: { value: "seats" } });
     fireEvent.change(screen.getByLabelText(/quantity/i), { target: { value: "250" } });
-    fireEvent.change(screen.getByLabelText(/timestamp/i), { target: { value: "2026-01-21T00:00:00.000Z" } });
+    fireEvent.change(screen.getByLabelText(/timestamp/i), {
+      target: { value: "2026-01-21T00:00:00.000Z" }
+    });
     await user.click(screen.getByRole("button", { name: /ingest usage/i }));
 
     expect(await screen.findByText("350 total units")).toBeInTheDocument();
     expect(screen.getByText("Usage accepted")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/usage\/events$/), expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/usage\/events$/),
+      expect.objectContaining({ method: "POST" })
+    );
   });
 
   it("aggregates usage for the selected period", async () => {
@@ -63,6 +72,79 @@ describe("UsagePage", () => {
 
     expect(await screen.findByText("seats")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/usage\/aggregate$/), expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/usage\/aggregate$/),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("renders unexpected usage failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      })
+    );
+    renderUsage();
+
+    expect(await screen.findByText(/unexpected usage error/i)).toBeInTheDocument();
+  });
+
+  it("renders typed ingest validation failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify([event])))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "validation_error",
+                message: "Quantity must be non-negative"
+              }
+            }),
+            { status: 400 }
+          )
+        )
+    );
+    renderUsage();
+
+    expect(await screen.findByText("100 total units")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /ingest usage/i }));
+
+    expect(
+      await screen.findByText("validation_error: Quantity must be non-negative")
+    ).toBeInTheDocument();
+  });
+
+  it("renders typed aggregate failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify([event])))
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "validation_error",
+                message: "Period end must be after period start"
+              }
+            }),
+            { status: 400 }
+          )
+        )
+    );
+    renderUsage();
+
+    expect(await screen.findByText("100 total units")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /aggregate usage/i }));
+
+    expect(
+      await screen.findByText("validation_error: Period end must be after period start")
+    ).toBeInTheDocument();
   });
 });

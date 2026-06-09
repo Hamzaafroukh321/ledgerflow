@@ -11,10 +11,11 @@ import { defaultInvoiceEngine } from "../engine/InvoiceEngine.js";
 import type { Invoice } from "../invoice/types.js";
 import { allocateRefund } from "../refunds/allocate-refund.js";
 import { compareScenarios } from "../scenarios/compare.js";
+import { assertInvoiceFromFiles, formatAssertionReport } from "./assert.js";
 
 const program = new Command();
 
-program.name("ledgerflow").description("Deterministic billing simulation toolkit").version("0.1.0");
+program.name("ledgerflow").description("Deterministic billing simulation toolkit").version("0.2.0");
 
 program
   .command("plans")
@@ -75,6 +76,21 @@ program
   });
 
 program
+  .command("assert")
+  .description("Assert that a billing context produces an exact expected invoice")
+  .requiredOption("--context <file>")
+  .requiredOption("--expected <file>")
+  .action((options: { context: string; expected: string }) => {
+    const result = assertInvoiceFromFiles(options.context, options.expected);
+    if (result.matched) {
+      console.log(formatAssertionReport(result));
+      return;
+    }
+    console.error(formatAssertionReport(result));
+    process.exitCode = 1;
+  });
+
+program
   .command("compare")
   .requiredOption("--baseline <file>")
   .requiredOption("--candidate <file...>")
@@ -94,8 +110,15 @@ program
 program
   .command("serve")
   .option("--port <port>", "Port to listen on", "3000")
-  .action(async (options: { port: string }) => {
-    const server = buildServer();
+  .option("--api-token <token>", "Bearer token required for API requests")
+  .action(async (options: { port: string; apiToken?: string }) => {
+    const server = buildServer(
+      {},
+      {
+        ...process.env,
+        LEDGERFLOW_API_TOKEN: options.apiToken ?? process.env.LEDGERFLOW_API_TOKEN
+      }
+    );
     await server.listen({ host: "0.0.0.0", port: Number.parseInt(options.port, 10) });
   });
 

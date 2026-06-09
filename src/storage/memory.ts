@@ -51,16 +51,16 @@ export class MemoryCouponRepository implements CouponRepository {
   private readonly coupons = new Map<string, Coupon>();
 
   public list(): Coupon[] {
-    return [...this.coupons.values()].map((coupon) => ({ ...coupon }));
+    return [...this.coupons.values()].map((coupon) => structuredClone(coupon));
   }
 
   public get(code: string): Coupon | undefined {
     const coupon = this.coupons.get(code);
-    return coupon ? { ...coupon } : undefined;
+    return coupon ? structuredClone(coupon) : undefined;
   }
 
   public save(coupon: Coupon): void {
-    this.coupons.set(coupon.code, { ...coupon });
+    this.coupons.set(coupon.code, structuredClone(coupon));
   }
 }
 

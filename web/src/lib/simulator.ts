@@ -15,7 +15,8 @@ export const simulatorFormSchema = z.object({
   creditMajor: z.string().optional()
 });
 
-export type SimulatorFormValues = z.infer<typeof simulatorFormSchema>;
+export type SimulatorFormInput = z.input<typeof simulatorFormSchema>;
+export type SimulatorFormValues = z.output<typeof simulatorFormSchema>;
 
 export const defaultSimulatorValues: SimulatorFormValues = {
   currency: "USD",

@@ -1,0 +1,53 @@
+{
+  "creditsApplied": [],
+  "currency": "USD",
+  "discounts": [],
+  "explanation": {
+    "children": [
+      {
+        "children": [],
+        "id": "subtotal",
+        "rule": "subtotal",
+        "total": 3095
+      },
+      {
+        "children": [],
+        "id": "discounts",
+        "rule": "discounts",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "credits",
+        "rule": "credits",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "tax",
+        "rule": "tax",
+        "total": 0
+      }
+    ],
+    "id": "root",
+    "rule": "invoice_total",
+    "total": 3095
+  },
+  "lineItems": [
+    {
+      "amountMinor": 3095,
+      "currency": "USD",
+      "description": "Pro plan (3 seats)",
+      "id": "pro_seats",
+      "traceId": "pro_seats"
+    }
+  ],
+  "taxLines": [],
+  "totals": {
+    "creditTotal": 0,
+    "discountTotal": 0,
+    "subtotal": 3095,
+    "tax": 0,
+    "total": 3095
+  }
+}

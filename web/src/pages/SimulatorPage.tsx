@@ -8,17 +8,25 @@ import { PlanSelect } from "../components/forms/PlanSelect";
 import { InvoiceView } from "../components/InvoiceView";
 import { TraceTree } from "../components/TraceTree";
 import { ApiError } from "../lib/apiClient";
-import { buildBillingContext, defaultSimulatorValues, simulatorFormSchema, type SimulatorFormValues } from "../lib/simulator";
+import { useCreateSimulation } from "../hooks/useSimulations";
+import {
+  buildBillingContext,
+  defaultSimulatorValues,
+  simulatorFormSchema,
+  type SimulatorFormInput,
+  type SimulatorFormValues
+} from "../lib/simulator";
 import { useSimulateInvoice } from "../hooks/useSimulateInvoice";
 
 export function SimulatorPage() {
   const [preview, setPreview] = useState<unknown>();
   const simulation = useSimulateInvoice();
+  const saveSimulation = useCreateSimulation();
   const {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<SimulatorFormValues>({
+  } = useForm<SimulatorFormInput, unknown, SimulatorFormValues>({
     resolver: zodResolver(simulatorFormSchema),
     defaultValues: defaultSimulatorValues
   });
@@ -86,6 +94,43 @@ export function SimulatorPage() {
         {simulation.data ? (
           <>
             <InvoiceView invoice={simulation.data} />
+            <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="font-semibold">Library</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Save this invoice and billing context for later review.
+              </p>
+              <button
+                className="mt-4 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                disabled={saveSimulation.isPending}
+                type="button"
+                onClick={() =>
+                  saveSimulation.mutate({
+                    name: `Simulation ${new Date().toISOString()}`,
+                    context: preview
+                  })
+                }
+              >
+                {saveSimulation.isPending ? "Saving..." : "Save to library"}
+              </button>
+              {saveSimulation.data ? (
+                <p
+                  className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700"
+                  role="status"
+                >
+                  Saved {saveSimulation.data.name}
+                </p>
+              ) : null}
+              {saveSimulation.error ? (
+                <p
+                  className="mt-3 rounded-md bg-rose-50 p-3 text-sm text-rose-700"
+                  role="alert"
+                >
+                  {saveSimulation.error instanceof ApiError
+                    ? `${saveSimulation.error.code}: ${saveSimulation.error.message}`
+                    : "Unexpected error"}
+                </p>
+              ) : null}
+            </section>
             <TraceTree currency={simulation.data.currency} trace={simulation.data.explanation} />
           </>
         ) : null}

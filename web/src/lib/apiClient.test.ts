@@ -75,7 +75,7 @@ describe("api client", () => {
     expect(fetchImpl).toHaveBeenCalledWith(
       expect.stringMatching(/\/plans$/),
       expect.objectContaining({
-        headers: expect.objectContaining({ "x-ledgerflow-token": "fixture-token" })
+        headers: expect.objectContaining({ authorization: "Bearer fixture-token" })
       })
     );
   });
@@ -103,6 +103,39 @@ describe("api client", () => {
       code: "http_error",
       message: "Server Error",
       status: 500
+    } satisfies Partial<ApiError>);
+  });
+
+  it("uses absolute base URLs and caller headers", async () => {
+    const fetchImpl = vi.fn(async () =>
+      response([
+        { id: "starter_monthly", name: "Starter", type: "flat", currency: "USD", components: [] }
+      ])
+    );
+    const client = createApiClient({
+      baseUrl: "https://ledgerflow.example/api",
+      apiToken: "fixture-token",
+      fetchImpl
+    });
+
+    await client.listPlans();
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://ledgerflow.example/api/plans",
+      expect.objectContaining({
+        headers: expect.objectContaining({ authorization: "Bearer fixture-token" })
+      })
+    );
+  });
+
+  it("surfaces empty non-envelope failures", async () => {
+    const fetchImpl = vi.fn(async () => new Response("", { status: 503, statusText: "" }));
+    const client = createApiClient({ fetchImpl });
+
+    await expect(client.listPlans()).rejects.toMatchObject({
+      code: "http_error",
+      message: "Request failed",
+      status: 503
     } satisfies Partial<ApiError>);
   });
 

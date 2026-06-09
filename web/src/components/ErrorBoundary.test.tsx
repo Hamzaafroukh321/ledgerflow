@@ -10,15 +10,21 @@ function BrokenView(): JSX.Element {
 describe("ErrorBoundary", () => {
   it("renders a controlled failure state", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const preventExpectedError = (event: ErrorEvent) => event.preventDefault();
+    window.addEventListener("error", preventExpectedError);
 
-    render(
-      <ErrorBoundary>
-        <BrokenView />
-      </ErrorBoundary>
-    );
+    try {
+      render(
+        <ErrorBoundary>
+          <BrokenView />
+        </ErrorBoundary>
+      );
 
-    expect(screen.getByRole("heading", { name: /could not render/i })).toBeInTheDocument();
-    expect(screen.getByText("Broken view")).toBeInTheDocument();
-    spy.mockRestore();
+      expect(screen.getByRole("heading", { name: /could not render/i })).toBeInTheDocument();
+      expect(screen.getByText("Broken view")).toBeInTheDocument();
+    } finally {
+      window.removeEventListener("error", preventExpectedError);
+      spy.mockRestore();
+    }
   });
 });

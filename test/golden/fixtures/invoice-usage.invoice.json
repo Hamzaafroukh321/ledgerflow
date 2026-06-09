@@ -1,0 +1,67 @@
+{
+  "creditsApplied": [],
+  "currency": "USD",
+  "discounts": [],
+  "explanation": {
+    "children": [
+      {
+        "children": [],
+        "id": "subtotal",
+        "rule": "subtotal",
+        "total": 11995
+      },
+      {
+        "children": [],
+        "id": "discounts",
+        "rule": "discounts",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "credits",
+        "rule": "credits",
+        "total": 0
+      },
+      {
+        "children": [],
+        "id": "tax",
+        "rule": "tax",
+        "total": 870
+      }
+    ],
+    "id": "root",
+    "rule": "invoice_total",
+    "total": 12865
+  },
+  "lineItems": [
+    {
+      "amountMinor": 9995,
+      "currency": "USD",
+      "description": "Pro plan (5 seats)",
+      "id": "pro_seats",
+      "traceId": "pro_seats"
+    },
+    {
+      "amountMinor": 2000,
+      "currency": "USD",
+      "description": "API usage overage",
+      "id": "api_calls",
+      "traceId": "api_calls"
+    }
+  ],
+  "taxLines": [
+    {
+      "amountMinor": 870,
+      "inclusive": false,
+      "jurisdiction": "US-CA",
+      "rate": 0.0725
+    }
+  ],
+  "totals": {
+    "creditTotal": 0,
+    "discountTotal": 0,
+    "subtotal": 11995,
+    "tax": 870,
+    "total": 12865
+  }
+}

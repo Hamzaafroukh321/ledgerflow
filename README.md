@@ -35,6 +35,26 @@ npm run dev
 
 The Vite dev server proxies `/api/*` to a local API server on port 3000. Start the API in another shell with `npm run build && node dist/cli/index.js serve --port 3000`. For a production-style single process, run `docker compose up --build` and open `http://127.0.0.1:3000/`; the same container serves the React app, `/docs`, `/openapi.json`, and API routes.
 
+For the secured release profile, set `LEDGERFLOW_API_TOKEN` and run:
+
+```powershell
+docker compose -f docker-compose.prod.yml up -d --build
+.\scripts\verify-release.ps1
+```
+
+See `docs/production-runbook.md` and `docs/threat-model.md` for release operations.
+
+## Authentication
+
+Set `LEDGERFLOW_API_TOKEN` before hosting LedgerFlow. When the token is set, every operational API route requires `Authorization: Bearer <token>`; `/health`, `/openapi.json`, and `/docs` remain public. Local development can run without a token, but the server logs an open-mode warning.
+
+```sh
+npm run build
+node dist/cli/index.js serve --port 3000 --api-token change-me
+```
+
+The browser console sends `VITE_LEDGERFLOW_API_TOKEN` as a bearer token. See `docs/auth.md` for all auth, body-size, and rate-limit environment variables.
+
 ## CLI Quick Start
 
 ```sh

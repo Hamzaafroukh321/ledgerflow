@@ -40,6 +40,23 @@ describe("SimulatorPage", () => {
     });
   });
 
+  it("omits blank optional adjustments from generated contexts", () => {
+    expect(
+      buildBillingContext({
+        currency: "USD",
+        customerId: "cus_1",
+        jurisdiction: "US-CA",
+        planId: "starter_monthly",
+        seats: 1,
+        periodStart: "2026-01-01",
+        periodEnd: "2026-02-01",
+        apiCalls: 0,
+        couponCode: "",
+        creditMajor: ""
+      })
+    ).toMatchObject({ coupons: [], credits: [] });
+  });
+
   it("shows validation errors for invalid required values", async () => {
     const user = userEvent.setup();
     renderSimulator();
@@ -88,4 +105,132 @@ describe("SimulatorPage", () => {
     expect(screen.getAllByText("$99.00").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /collapse invoice_total/i })).toBeInTheDocument();
   });
+
+  it("saves the simulated invoice context to the library", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST" && String(_input).includes("/simulations")) {
+          return new Response(
+            JSON.stringify({
+              id: "sim_saved",
+              name: "Saved from simulator",
+              createdAt: "2026-01-01T00:00:00.000Z",
+              context: JSON.parse(String(init.body)).context,
+              invoice: invoiceResponse()
+            })
+          );
+        }
+        return new Response(JSON.stringify(invoiceResponse()));
+      })
+    );
+    renderSimulator();
+
+    await user.click(screen.getByRole("button", { name: /simulate invoice/i }));
+    await user.click(await screen.findByRole("button", { name: /save to library/i }));
+
+    expect(await screen.findByText(/saved saved from simulator/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/saved saved from simulator/i);
+  });
+
+  it("renders save-to-library failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST" && String(_input).includes("/simulations")) {
+          return new Response(
+            JSON.stringify({ error: { code: "forbidden", message: "Write denied" } }),
+            { status: 403 }
+          );
+        }
+        return new Response(JSON.stringify(invoiceResponse()));
+      })
+    );
+    renderSimulator();
+
+    await user.click(screen.getByRole("button", { name: /simulate invoice/i }));
+    await user.click(await screen.findByRole("button", { name: /save to library/i }));
+
+    expect(await screen.findByText(/forbidden: Write denied/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/forbidden: Write denied/i);
+  });
+
+  it("renders typed API failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: { code: "unauthorized", message: "Token required" } }), {
+          status: 401,
+          statusText: "Unauthorized"
+        })
+      )
+    );
+    renderSimulator();
+
+    await user.click(screen.getByRole("button", { name: /simulate invoice/i }));
+
+    expect(await screen.findByText(/unauthorized: Token required/i)).toBeInTheDocument();
+  });
+
+  it("renders unexpected simulation failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("Network down");
+      })
+    );
+    renderSimulator();
+
+    await user.click(screen.getByRole("button", { name: /simulate invoice/i }));
+
+    expect(await screen.findByText(/unexpected error/i)).toBeInTheDocument();
+  });
+
+  it("renders unexpected save-to-library failures", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST" && String(_input).includes("/simulations")) {
+          throw new Error("Network down");
+        }
+        return new Response(JSON.stringify(invoiceResponse()));
+      })
+    );
+    renderSimulator();
+
+    await user.click(screen.getByRole("button", { name: /simulate invoice/i }));
+    await user.click(await screen.findByRole("button", { name: /save to library/i }));
+
+    expect(await screen.findByText(/unexpected error/i)).toBeInTheDocument();
+  });
 });
+
+function invoiceResponse() {
+  return {
+    currency: "USD",
+    lineItems: [
+      {
+        id: "base",
+        description: "Base subscription",
+        amountMinor: 9900,
+        currency: "USD",
+        traceId: "base"
+      }
+    ],
+    discounts: [],
+    creditsApplied: [],
+    taxLines: [],
+    totals: { subtotal: 9900, discountTotal: 0, creditTotal: 0, tax: 0, total: 9900 },
+    explanation: {
+      id: "root",
+      rule: "invoice_total",
+      total: 9900,
+      children: [{ id: "subtotal", rule: "subtotal", total: 9900, children: [] }]
+    }
+  };
+}

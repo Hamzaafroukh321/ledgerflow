@@ -1,0 +1,21 @@
+name: LedgerFlow Billing Assert
+description: Assert that a billing context still produces the expected invoice.
+inputs:
+  context:
+    description: Path to a billing context JSON file.
+    required: true
+  expected:
+    description: Path to the expected invoice JSON file.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+    - name: Build LedgerFlow
+      shell: bash
+      run: npm run build
+    - name: Assert billing invoice
+      shell: bash
+      run: node dist/cli/index.js assert --context "${{ inputs.context }}" --expected "${{ inputs.expected }}"
