@@ -2,10 +2,10 @@
 
 ## HARDENING TALLY
 - defects found / fixed: 1 / 1
-- tests added: 0 new files; E2E assertion hardened
+- tests added: E2E assertion hardened; simulator status/alert role assertions added
 - current coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches
-- commits: 0 on `work/hardening-20260609`
-- push status: pending
+- commits: 1 on `work/hardening-20260609`
+- push status: pushed to `origin/work/hardening-20260609`
 
 ## MORNING SUMMARY
 - phases completed: Phase 0 through Phase 10 are implemented and verified on per-phase branches.
@@ -161,4 +161,20 @@
   - Added `role="status"` to the successful save confirmation and `role="alert"` to the save failure message.
   - Updated the E2E assertion to target the status region instead of ambiguous page text.
 - verified by: `npm --prefix web run e2e` passed 2/2; `npm --prefix web test -- src/pages/SimulatorPage.test.tsx` passed 9/9
-- commit: pending   pushed: pending
+- commit: 9866638   pushed: yes
+
+## [15:00] CLI surface — TESTED
+- what:
+  - Exercised `--version`, `plans`, `simulate`, `validate-coupon`, `refund`, `audit`, `compare`, and `assert` against bundled examples/goldens.
+  - Verified missing coupon returns an invalid result with exit 0.
+  - Verified unsupported refund strategy and assertion drift exit non-zero with useful error output.
+- verified by: `node dist\cli\index.js ...` command suite; success paths exited 0; invalid refund/assert drift exited 1
+- commit: none   pushed: n/a
+
+## [15:00] API surface — TESTED
+- what:
+  - Started `ledgerflow serve` with a bearer token on port 3200.
+  - Checked `/health`, `/docs`, `/openapi.json`, unauthorized `/v1/plans`, and happy paths for plans, simulate, audit, coupon validation, refunds, usage, customers, subscriptions, billing profile, scenarios, and saved simulations.
+  - Checked malformed `/v1/invoices/simulate` returns 400.
+- verified by: PowerShell `Invoke-RestMethod` sweep reported `API manual exercise passed`
+- commit: none   pushed: n/a

@@ -131,6 +131,7 @@ describe("SimulatorPage", () => {
     await user.click(await screen.findByRole("button", { name: /save to library/i }));
 
     expect(await screen.findByText(/saved saved from simulator/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/saved saved from simulator/i);
   });
 
   it("renders save-to-library failures", async () => {
@@ -153,6 +154,7 @@ describe("SimulatorPage", () => {
     await user.click(await screen.findByRole("button", { name: /save to library/i }));
 
     expect(await screen.findByText(/forbidden: Write denied/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/forbidden: Write denied/i);
   });
 
   it("renders typed API failures", async () => {
