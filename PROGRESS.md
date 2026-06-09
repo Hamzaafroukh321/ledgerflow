@@ -199,4 +199,12 @@
   - Added discount stacking edge coverage for fixed-coupon capping, `appliesTo` eligibility, empty eligibility, and single non-stackable coupons.
   - Added API coverage proving idempotent simulation saves replay only inside the same tenant principal and do not leak across tenants.
 - verified by: `npx vitest run test/api.test.ts test/discounts.test.ts` passed 37/37; `.\scripts\verify.ps1` passed with 164 backend tests, 99 frontend coverage tests, 2 E2E tests, scan, build, smoke, and Docker build
+- commit: 5c455a0   pushed: yes
+
+## [15:31] Frontend test output cleanup — WIP
+- what:
+  - Suppressed expected jsdom `window.error` reporting only inside ErrorBoundary and SessionProvider misuse tests.
+  - Kept the assertions that the error boundary renders a controlled failure state and `useSession` rejects missing provider usage.
+- Opted the router provider into React Router's `v7_startTransition` behavior to remove future-flag warning noise from E2E runs.
+- verified by: `npm --prefix web test -- src/components/ErrorBoundary.test.tsx src/components/sessionContext.test.tsx` passed 2/2 with clean output; `npm --prefix web run typecheck` passed; `npm --prefix web run e2e` passed 2/2 with clean output; `.\scripts\verify.ps1` passed
 - commit: pending   pushed: pending
