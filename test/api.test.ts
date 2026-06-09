@@ -97,9 +97,9 @@ describe("api", () => {
         })
       ).json()
     ).toEqual({ valid: true });
-    expect(
-      (await server.inject({ method: "GET", url: "/coupons" })).json()
-    ).toEqual([{ code: "SAVE", kind: "percent", value: 10, stackable: true }]);
+    expect((await server.inject({ method: "GET", url: "/coupons" })).json()).toEqual([
+      { code: "SAVE", kind: "percent", value: 10, stackable: true }
+    ]);
 
     expect(
       (
@@ -154,7 +154,9 @@ describe("api", () => {
       status: "ok"
     });
     expect(
-      (await server.inject({ method: "GET", url: "/v1/plans" })).json<{ data: Plan[] }>().data.map((plan) => plan.id)
+      (await server.inject({ method: "GET", url: "/v1/plans" }))
+        .json<{ data: Plan[] }>()
+        .data.map((plan) => plan.id)
     ).toEqual(["pro_monthly", "starter_monthly"]);
     const simulated = await server.inject({
       method: "POST",
@@ -191,7 +193,9 @@ describe("api", () => {
       ]
     };
 
-    expect((await server.inject({ method: "POST", url: "/v1/plans", payload: plan })).statusCode).toBe(401);
+    expect(
+      (await server.inject({ method: "POST", url: "/v1/plans", payload: plan })).statusCode
+    ).toBe(401);
     expect(
       (
         await server.inject({
@@ -260,7 +264,9 @@ describe("api", () => {
     expect((await server.inject({ method: "GET", url: "/v1/plans?limit=101" })).statusCode).toBe(
       400
     );
-    expect((await server.inject({ method: "GET", url: "/v1/plans?cursor=not-base64" })).statusCode).toBe(400);
+    expect(
+      (await server.inject({ method: "GET", url: "/v1/plans?cursor=not-base64" })).statusCode
+    ).toBe(400);
     const invalidOffset = Buffer.from(JSON.stringify({ offset: -1 }), "utf8").toString("base64url");
     expect(
       (await server.inject({ method: "GET", url: `/v1/plans?cursor=${invalidOffset}` })).statusCode
@@ -359,6 +365,59 @@ describe("api", () => {
     expect(replay.headers["idempotency-replayed"]).toBe("true");
     expect(replay.json()).toEqual(first.json());
     expect(list.json<{ data: unknown[]; page: { total: number } }>().page.total).toBe(1);
+
+    await server.close();
+  });
+
+  it("scopes idempotent simulation saves by tenant principal", async () => {
+    const server = buildServer(
+      {},
+      { LEDGERFLOW_API_TOKENS: "tenant-a-token:tenant-a:user-a,tenant-b-token:tenant-b:user-b" }
+    );
+    const payload = { id: "shared-idem-run", name: "tenant forecast", context };
+
+    const first = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { authorization: "Bearer tenant-a-token", "idempotency-key": "shared-key" },
+      payload
+    });
+    const sameTenantReplay = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { authorization: "Bearer tenant-a-token", "idempotency-key": "shared-key" },
+      payload
+    });
+    const otherTenant = await server.inject({
+      method: "POST",
+      url: "/v1/simulations",
+      headers: { authorization: "Bearer tenant-b-token", "idempotency-key": "shared-key" },
+      payload
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(sameTenantReplay.headers["idempotency-replayed"]).toBe("true");
+    expect(sameTenantReplay.json()).toEqual(first.json());
+    expect(otherTenant.statusCode).toBe(200);
+    expect(otherTenant.headers["idempotency-replayed"]).toBeUndefined();
+    expect(
+      (
+        await server.inject({
+          method: "GET",
+          url: "/v1/simulations",
+          headers: { authorization: "Bearer tenant-a-token" }
+        })
+      ).json<{ data: unknown[] }>().data
+    ).toHaveLength(1);
+    expect(
+      (
+        await server.inject({
+          method: "GET",
+          url: "/v1/simulations",
+          headers: { authorization: "Bearer tenant-b-token" }
+        })
+      ).json<{ data: unknown[] }>().data
+    ).toHaveLength(1);
 
     await server.close();
   });
@@ -901,16 +960,22 @@ describe("api", () => {
     };
 
     expect(
-      (await server.inject({ method: "POST", url: "/plans", headers: tenantA, payload: privatePlan }))
-        .statusCode
+      (
+        await server.inject({
+          method: "POST",
+          url: "/plans",
+          headers: tenantA,
+          payload: privatePlan
+        })
+      ).statusCode
     ).toBe(200);
 
-    const plansA = (
-      await server.inject({ method: "GET", url: "/plans", headers: tenantA })
-    ).json<Plan[]>();
-    const plansB = (
-      await server.inject({ method: "GET", url: "/plans", headers: tenantB })
-    ).json<Plan[]>();
+    const plansA = (await server.inject({ method: "GET", url: "/plans", headers: tenantA })).json<
+      Plan[]
+    >();
+    const plansB = (await server.inject({ method: "GET", url: "/plans", headers: tenantB })).json<
+      Plan[]
+    >();
     expect(plansA.map((plan) => plan.id)).toContain("private_plan");
     expect(plansB.map((plan) => plan.id)).not.toContain("private_plan");
 
@@ -951,9 +1016,9 @@ describe("api", () => {
         .statusCode
     ).toBe(404);
     expect(
-      (
-        await server.inject({ method: "GET", url: "/simulations", headers: tenantB })
-      ).json<unknown[]>()
+      (await server.inject({ method: "GET", url: "/simulations", headers: tenantB })).json<
+        unknown[]
+      >()
     ).toEqual([]);
 
     await server.close();
@@ -986,7 +1051,9 @@ describe("api", () => {
       ]
     };
 
-    expect((await server.inject({ method: "GET", url: "/plans", headers: viewer })).statusCode).toBe(200);
+    expect(
+      (await server.inject({ method: "GET", url: "/plans", headers: viewer })).statusCode
+    ).toBe(200);
     expect(
       (
         await server.inject({
@@ -1044,7 +1111,9 @@ describe("api", () => {
       ).statusCode
     ).toBe(200);
 
-    expect((await server.inject({ method: "GET", url: "/memberships", headers: viewer })).statusCode).toBe(403);
+    expect(
+      (await server.inject({ method: "GET", url: "/memberships", headers: viewer })).statusCode
+    ).toBe(403);
     expect(
       (
         await server.inject({

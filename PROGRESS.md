@@ -185,4 +185,18 @@
   - Kept the real process-level CLI coverage and added an explicit timeout to that integration test.
   - Added component assertions that simulator save success uses `role=status` and save failure uses `role=alert`.
 - verified by: `npx vitest run test/cli.assert.test.ts` passed 4/4; `.\scripts\verify.ps1` passed end to end
+- commit: 52ccdc2   pushed: yes
+
+## [15:18] Release container verification — DONE
+- what:
+  - Re-ran the release verifier after Docker became available.
+  - Confirmed the production image builds and the Compose release stack starts, passes readiness, and tears down cleanly with Postgres.
+- verified by: `.\scripts\verify-release.ps1` passed
+- commit: pending   pushed: pending
+
+## [15:23] Billing and tenant edge coverage — WIP
+- what:
+  - Added discount stacking edge coverage for fixed-coupon capping, `appliesTo` eligibility, empty eligibility, and single non-stackable coupons.
+  - Added API coverage proving idempotent simulation saves replay only inside the same tenant principal and do not leak across tenants.
+- verified by: `npx vitest run test/api.test.ts test/discounts.test.ts` passed 37/37; `.\scripts\verify.ps1` passed with 164 backend tests, 99 frontend coverage tests, 2 E2E tests, scan, build, smoke, and Docker build
 - commit: pending   pushed: pending
