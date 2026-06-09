@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## HARDENING TALLY
-- defects found / fixed: 2 / 2
+- defects found / fixed: 3 / 3
 - tests added: E2E assertion hardened; simulator status/alert role assertions added
 - current coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches
 - commits: 2 on `work/hardening-20260609`
@@ -214,4 +214,12 @@
   - Added UsagePage coverage for typed validation envelopes returned by ingest and aggregate mutations.
   - Confirmed the UI shows the stable `code: message` form for API errors instead of the generic unexpected-error fallback.
 - verified by: `npm --prefix web test -- src/pages/UsagePage.test.tsx` passed 5/5; `.\scripts\verify.ps1` passed with 164 backend tests, 101 frontend coverage tests, 2 E2E tests, and frontend coverage 97.61% statements / 91.51% branches
+- commit: cdc0293   pushed: yes
+
+## [15:45] Memory coupon defensive cloning — FIXED
+- what:
+  - Found a real mutation leak: coupons returned by the memory repository shared nested `appliesTo` arrays with stored data.
+  - Added a regression test proving `get()` and `list()` results cannot mutate stored coupon eligibility.
+  - Switched memory coupon save/read/list operations to `structuredClone`, matching the defensive cloning used for plans and simulation runs.
+- verified by: `npx vitest run test/storage.test.ts` passed 6/6; `.\scripts\verify.ps1` passed with 165 backend tests, 101 frontend coverage tests, 2 E2E tests, and Docker build
 - commit: pending   pushed: pending

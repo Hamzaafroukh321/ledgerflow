@@ -92,6 +92,28 @@ describe("storage", () => {
     ).toMatchObject({ accepted: false, reason: "idempotency_conflict" });
   });
 
+  it("memory coupon reads cannot mutate stored nested eligibility", () => {
+    const coupons = new MemoryCouponRepository();
+    coupons.save({
+      code: "TARGETED",
+      kind: "fixed",
+      value: 100,
+      appliesTo: ["base"],
+      stackable: true
+    });
+
+    coupons.get("TARGETED")?.appliesTo?.push("usage");
+    coupons.list()[0]?.appliesTo?.push("support");
+
+    expect(coupons.get("TARGETED")).toEqual({
+      code: "TARGETED",
+      kind: "fixed",
+      value: 100,
+      appliesTo: ["base"],
+      stackable: true
+    });
+  });
+
   it("sqlite repositories satisfy the same contract", () => {
     const store = new SqliteStore();
     store.save(plan);
