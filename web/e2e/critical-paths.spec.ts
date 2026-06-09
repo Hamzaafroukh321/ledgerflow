@@ -20,7 +20,7 @@ test("catalog, simulator, and audit workflows run against the API", async ({ pag
   await expect(page.getByText("Simulated invoice")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Explanation trace" })).toBeVisible();
   await page.getByRole("button", { name: "Save to library" }).click();
-  await expect(page.getByText(/Saved Simulation/i)).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /Saved Simulation/i })).toBeVisible();
   await page.getByRole("link", { name: "Saved simulations" }).click();
   await expect(page.getByRole("heading", { name: "Selected run" })).toBeVisible();
 

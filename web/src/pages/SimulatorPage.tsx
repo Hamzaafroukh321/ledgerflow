@@ -113,12 +113,18 @@ export function SimulatorPage() {
                 {saveSimulation.isPending ? "Saving..." : "Save to library"}
               </button>
               {saveSimulation.data ? (
-                <p className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">
+                <p
+                  className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700"
+                  role="status"
+                >
                   Saved {saveSimulation.data.name}
                 </p>
               ) : null}
               {saveSimulation.error ? (
-                <p className="mt-3 rounded-md bg-rose-50 p-3 text-sm text-rose-700">
+                <p
+                  className="mt-3 rounded-md bg-rose-50 p-3 text-sm text-rose-700"
+                  role="alert"
+                >
                   {saveSimulation.error instanceof ApiError
                     ? `${saveSimulation.error.code}: ${saveSimulation.error.message}`
                     : "Unexpected error"}

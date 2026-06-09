@@ -1,5 +1,12 @@
 # PROGRESS
 
+## HARDENING TALLY
+- defects found / fixed: 1 / 1
+- tests added: 0 new files; E2E assertion hardened
+- current coverage: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches
+- commits: 0 on `work/hardening-20260609`
+- push status: pending
+
 ## MORNING SUMMARY
 - phases completed: Phase 0 through Phase 10 are implemented and verified on per-phase branches.
 - current branch state: `feat/phase10-release-readiness` with release work ready to commit; `main` was not touched and nothing was pushed.
@@ -147,3 +154,11 @@
 - tests: backend 160 passing; frontend 99 passing at 97.61% statements / 91.24% branches; `.\scripts\verify.ps1` passed including scan, smoke, 2 Playwright e2e tests, and Docker build; `.\scripts\verify-release.ps1` passed against production compose
 - decisions/notes: Production compose uses Postgres via `LEDGERFLOW_DB_URL`, so API startup applies migrations before serving traffic. The local release tag is `v0.2.0`.
 - blockers (if any): none
+
+## [14:56] web e2e save confirmation — FIXED
+- what:
+  - Found baseline verifier failure in Playwright: loose `/Saved Simulation/i` text matched both the nav link and the save confirmation.
+  - Added `role="status"` to the successful save confirmation and `role="alert"` to the save failure message.
+  - Updated the E2E assertion to target the status region instead of ambiguous page text.
+- verified by: `npm --prefix web run e2e` passed 2/2; `npm --prefix web test -- src/pages/SimulatorPage.test.tsx` passed 9/9
+- commit: pending   pushed: pending
