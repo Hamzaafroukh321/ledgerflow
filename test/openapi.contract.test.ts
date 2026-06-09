@@ -11,13 +11,17 @@ describe("OpenAPI contract", () => {
     await server.ready();
     try {
       expect(stableStringify(server.swagger())).toBe(
-        readFileSync(join("test", "openapi", "openapi.snapshot.json"), "utf8")
+        normalizeNewlines(readFileSync(join("test", "openapi", "openapi.snapshot.json"), "utf8"))
       );
     } finally {
       await server.close();
     }
   });
 });
+
+function normalizeNewlines(value: string): string {
+  return value.replace(/\r\n/g, "\n");
+}
 
 function stableStringify(value: unknown): string {
   return `${JSON.stringify(stable(value), null, 2)}\n`;

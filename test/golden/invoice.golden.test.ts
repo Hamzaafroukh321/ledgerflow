@@ -20,14 +20,20 @@ describe("golden invoice fixtures", () => {
   it.each(EXAMPLES)("%s stays byte-stable", (file) => {
     const context = JSON.parse(readFileSync(join("examples", file), "utf8")) as unknown;
     const actual = stableStringify(defaultInvoiceEngine.simulate(context));
-    const expected = readFileSync(
-      join("test", "golden", "fixtures", file.replace(".json", ".invoice.json")),
-      "utf8"
+    const expected = normalizeNewlines(
+      readFileSync(
+        join("test", "golden", "fixtures", file.replace(".json", ".invoice.json")),
+        "utf8"
+      )
     );
 
     expect(actual).toBe(expected);
   });
 });
+
+function normalizeNewlines(value: string): string {
+  return value.replace(/\r\n/g, "\n");
+}
 
 function stableStringify(value: unknown): string {
   return `${JSON.stringify(stable(value), null, 2)}\n`;

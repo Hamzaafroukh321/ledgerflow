@@ -9,5 +9,4 @@ coverage/
 *.sqlite
 *.sqlite-*
 ledgerflow.zip
-.git/
 .env

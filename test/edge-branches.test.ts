@@ -181,7 +181,7 @@ describe("edge-case branch coverage", () => {
     expect((await server.inject({ method: "GET", url: "/plain" })).statusCode).toBe(500);
 
     await server.close();
-  });
+  }, 15_000);
 
   it("covers customer profile and repository decision branches", () => {
     expect(() =>

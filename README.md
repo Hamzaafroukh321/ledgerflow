@@ -44,6 +44,22 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 See `docs/production-runbook.md` and `docs/threat-model.md` for release operations.
 
+## Repository Docker Image
+
+The project Dockerfile builds a testable repository image. The final image keeps the source tree, tests, root and web dev dependencies, built `dist/` artifacts, and `.git/` history when `.git/` is present in the Docker build context.
+
+```sh
+docker build -t ledgerflow-repo .
+docker run --rm ledgerflow-repo test -d src
+docker run --rm ledgerflow-repo test -d test
+docker run --rm ledgerflow-repo test -d .git
+docker run --rm ledgerflow-repo npm test
+docker run --rm ledgerflow-repo npm --prefix web test
+docker run --rm ledgerflow-repo npm run build
+```
+
+Run the app from the same image with `docker run --rm -p 3000:3000 ledgerflow-repo`.
+
 ## Authentication
 
 Set `LEDGERFLOW_API_TOKEN` before hosting LedgerFlow. When the token is set, every operational API route requires `Authorization: Bearer <token>`; `/health`, `/openapi.json`, and `/docs` remain public. Local development can run without a token, but the server logs an open-mode warning.
